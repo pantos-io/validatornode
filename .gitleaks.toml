@@ -1,0 +1,5 @@
+[allowlist]
+    description = "Whitelisted files"
+    files = [
+      '''validator-node.local.env''',
+    ]

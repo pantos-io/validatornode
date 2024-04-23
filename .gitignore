@@ -1,0 +1,13 @@
+**/__pycache__/
+*.egg-info/
+*.key*
+*.keystore*
+*.swp
+.coverage
+.DS_store
+.venv/
+.vscode/
+build/
+dist/
+find.sh
+local/

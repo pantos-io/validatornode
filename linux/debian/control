@@ -1,0 +1,7 @@
+Package: pantos-validator-node
+Version: VERSION
+Architecture: all
+Depends: libpq-dev, openssl, python3-dev (>= 3.10), apache2, apache2-dev, python3-venv
+Recommends: iptables, postgresql, rabbitmq-server, python3-pip, systemctl
+Maintainer: Pantos GmbH <contact@pantos.io>
+Description: Validator Node reference implementation for the Pantos multi-blockchain system.

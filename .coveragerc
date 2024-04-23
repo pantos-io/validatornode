@@ -1,0 +1,7 @@
+[run]
+omit =
+    pantos/validatornode/__main__.py
+    pantos/validatornode/database/migrations/*
+    pantos/validatornode/wsgi.py
+branch = True
+relative_files = True
