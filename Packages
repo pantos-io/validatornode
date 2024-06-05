@@ -1,0 +1,13 @@
+Package: pantos-validator-node
+Version: 1.8.0
+Architecture: all
+Maintainer: Pantos GmbH <contact@pantos.io>
+Depends: libpq-dev, openssl, python3-dev (>= 3.10), apache2, apache2-dev, python3-venv
+Recommends: iptables, postgresql, rabbitmq-server, python3-pip, systemctl
+Filename: ./pantos-validator-node-1.8.0-1_all.deb
+Size: 69584
+MD5sum: 021836aef7d7e1a01e9a9268e21f5eca
+SHA1: 972d779427bc14e23968043d4bd23f69e9d51bd6
+SHA256: 062b7f8c1afbf53c04693bd0abd0a428e58da66ee2952d30a84965466fc775f2
+Description: Validator Node reference implementation for the Pantos multi-blockchain system.
+
