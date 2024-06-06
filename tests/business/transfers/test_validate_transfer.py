@@ -78,12 +78,15 @@ def test_validate_transfer_confirmed_correct(
         transfer_to_submission_start_response.destination_hub_address
     destination_forwarder_address = \
         transfer_to_submission_start_response.destination_forwarder_address
-    mock_database_access.update_transfer_submitted_destination_transaction.\
-        assert_called_once_with(
+    if is_reversal_transfer:
+        mock_database_access.update_reversal_transfer.assert_called_once_with(
             internal_transfer_id,
             cross_chain_transfer.eventual_destination_blockchain,
             cross_chain_transfer.eventual_recipient_address,
-            cross_chain_transfer.eventual_destination_token_address,
+            cross_chain_transfer.eventual_destination_token_address)
+    mock_database_access.update_transfer_submitted_destination_transaction.\
+        assert_called_once_with(
+            internal_transfer_id,
             destination_hub_address,
             destination_forwarder_address)
     mock_database_access.update_transfer_status.assert_called_once_with(

@@ -241,9 +241,9 @@ def read_transfer_id(source_blockchain: Blockchain,
         return session.execute(statement).scalar_one_or_none()
 
 
-def read_transfer_nonce(internal_transfer_id: int) -> int:
-    """Read the nonce for a transfer submitted to the destination
-    blockchain.
+def read_transfer_nonce(internal_transfer_id: int) -> int | None:
+    """Read the nonce for a transfer transaction submitted to the
+    destination blockchain.
 
     Parameters
     ----------
@@ -252,15 +252,16 @@ def read_transfer_nonce(internal_transfer_id: int) -> int:
 
     Returns
     -------
-    int
-        The nonce for the transfer on the destination blockchain.
+    int or None
+        The nonce for the transfer transaction on the destination
+        blockchain, or None if no blockchain nonce has been assigned to
+        the transfer.
 
     """
     statement = sqlalchemy.select(
         Transfer.nonce).filter(Transfer.id == internal_transfer_id)
     with get_session() as session:
-        result = session.execute(statement).fetchall()
-        return result[0][0]
+        return session.execute(statement).scalar_one_or_none()
 
 
 @dataclasses.dataclass
@@ -506,6 +507,40 @@ def update_blockchain_last_block_number(blockchain: Blockchain,
                 sqlalchemy.Column, last_block_number)
 
 
+def update_reversal_transfer(
+        internal_transfer_id: int, destination_blockchain: Blockchain,
+        recipient_address: BlockchainAddress,
+        destination_token_address: BlockchainAddress) -> None:
+    """Update a reversal transfer's destination blockchain attributes.
+
+    Parameters
+    ----------
+    internal_transfer_id : int
+        The unique internal ID of the transfer.
+    destination_blockchain : Blockchain
+        The transfer's destination blockchain.
+    recipient_address : BlockchainAddress
+        The transfer's recipient address.
+    destination_token_address : BlockchainAddress
+        The address of the transferred token on the destination
+        blockchain.
+
+    """
+    with get_session_maker().begin() as session:
+        destination_token_contract_id = _read_token_contract_id(
+            session, destination_blockchain, destination_token_address)
+        if destination_token_contract_id is None:
+            destination_token_contract_id = _create_token_contract(
+                session, destination_blockchain, destination_token_address)
+        statement = sqlalchemy.update(Transfer).where(
+            Transfer.id == internal_transfer_id).values(
+                destination_blockchain_id=destination_blockchain.value,
+                recipient_address=recipient_address,
+                destination_token_contract_id=destination_token_contract_id,
+                updated=datetime.datetime.utcnow())
+        session.execute(statement)
+
+
 def update_transfer_confirmed_destination_transaction(
         internal_transfer_id: int, destination_transfer_id: int,
         destination_transaction_id: str,
@@ -536,10 +571,7 @@ def update_transfer_confirmed_destination_transaction(
 
 
 def update_transfer_submitted_destination_transaction(
-        internal_transfer_id: int, destination_blockchain: Blockchain,
-        recipient_address: BlockchainAddress,
-        destination_token_address: BlockchainAddress,
-        destination_hub_address: BlockchainAddress,
+        internal_transfer_id: int, destination_hub_address: BlockchainAddress,
         destination_forwarder_address: BlockchainAddress) -> None:
     """Update a transfer's attributes for its submitted destination
     blockchain transaction.
@@ -548,13 +580,6 @@ def update_transfer_submitted_destination_transaction(
     ----------
     internal_transfer_id : int
         The unique internal ID of the transfer.
-    destination_blockchain : Blockchain
-        The transfer's destination blockchain.
-    recipient_address : BlockchainAddress
-        The transfer's recipient address.
-    destination_token_address : BlockchainAddress
-        The address of the transferred token on the destination
-        blockchain.
     destination_hub_address : BlockchainAddress
         The address of the hub contract on the destination blockchain.
     destination_forwarder_address : BlockchainAddress
@@ -563,14 +588,12 @@ def update_transfer_submitted_destination_transaction(
 
     """
     with get_session_maker().begin() as session:
-        transfer = typing.cast(Transfer,
-                               session.get(Transfer, internal_transfer_id))
-        assert transfer is not None
-        destination_token_contract_id = _read_token_contract_id(
-            session, destination_blockchain, destination_token_address)
-        if destination_token_contract_id is None:
-            destination_token_contract_id = _create_token_contract(
-                session, destination_blockchain, destination_token_address)
+        select_statement = sqlalchemy.select(
+            Transfer.destination_blockchain_id).where(
+                Transfer.id == internal_transfer_id)
+        destination_blockchain_id = session.execute(
+            select_statement).scalar_one()
+        destination_blockchain = Blockchain(destination_blockchain_id)
         destination_hub_contract_id = _read_hub_contract_id(
             session, destination_blockchain, destination_hub_address)
         if destination_hub_contract_id is None:
@@ -581,18 +604,13 @@ def update_transfer_submitted_destination_transaction(
         if destination_forwarder_contract_id is None:
             destination_forwarder_contract_id = _create_forwarder_contract(
                 session, destination_blockchain, destination_forwarder_address)
-        transfer.destination_blockchain_id = typing.cast(
-            sqlalchemy.Column, destination_blockchain.value)
-        transfer.recipient_address = typing.cast(sqlalchemy.Column,
-                                                 recipient_address)
-        transfer.destination_token_contract_id = typing.cast(
-            sqlalchemy.Column, destination_token_contract_id)
-        transfer.destination_hub_contract_id = typing.cast(
-            sqlalchemy.Column, destination_hub_contract_id)
-        transfer.destination_forwarder_contract_id = typing.cast(
-            sqlalchemy.Column, destination_forwarder_contract_id)
-        transfer.updated = typing.cast(sqlalchemy.Column,
-                                       datetime.datetime.utcnow())
+        update_statement = sqlalchemy.update(Transfer).where(
+            Transfer.id == internal_transfer_id).values(
+                destination_hub_contract_id=destination_hub_contract_id,
+                destination_forwarder_contract_id=  # noqa: E251
+                destination_forwarder_contract_id,
+                updated=datetime.datetime.utcnow())
+        session.execute(update_statement)
 
 
 def update_transfer_nonce(internal_transfer_id: int,
