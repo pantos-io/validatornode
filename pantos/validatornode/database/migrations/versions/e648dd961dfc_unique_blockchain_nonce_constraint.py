@@ -15,6 +15,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+    alembic.op.execute('UPDATE transfers SET nonce = NULL')
     alembic.op.create_unique_constraint('unique_blockchain_nonce', 'transfers',
                                         ['destination_blockchain_id', 'nonce'],
                                         deferrable='True')
