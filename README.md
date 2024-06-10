@@ -1,6 +1,6 @@
 <img src="https://raw.githubusercontent.com/pantos-io/validatornode/img/pantos-logo-full.svg" alt="Pantos logo" align="right" width="120" />
 
-[![CI](https://github.com/pantos-io/validatornode/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/pantos-io/validatornode/actions/workflows/ci.yaml) 
+[![CI](https://github.com/pantos-io/validatornode/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/pantos-io/validatornode/actions/workflows/ci.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=pantos-io_validatornode&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=pantos-io_validatornode)
 
 
