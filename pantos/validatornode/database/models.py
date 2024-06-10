@@ -7,8 +7,8 @@ import typing
 import sqlalchemy
 import sqlalchemy.orm
 
+UNIQUE_BLOCKCHAIN_NONCE_CONSTRAINT = 'unique_blockchain_nonce'
 UNIQUE_VALIDATOR_NONCE_CONSTRAINT = 'unique_validator_nonce'
-"""Name of the unique validator nonce constraint."""
 
 Base: typing.Any = sqlalchemy.orm.declarative_base()
 """SQLAlchemy base class for declarative class definitions."""
@@ -366,6 +366,9 @@ class Transfer(Base):
     __table_args__ = (sqlalchemy.UniqueConstraint(
         destination_forwarder_contract_id, validator_nonce,
         name=UNIQUE_VALIDATOR_NONCE_CONSTRAINT),
+                      sqlalchemy.UniqueConstraint(
+                          destination_blockchain_id, nonce, deferrable=True,
+                          name=UNIQUE_BLOCKCHAIN_NONCE_CONSTRAINT),
                       sqlalchemy.UniqueConstraint(source_blockchain_id,
                                                   source_transfer_id),
                       sqlalchemy.UniqueConstraint(destination_blockchain_id,

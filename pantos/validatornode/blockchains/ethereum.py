@@ -486,6 +486,17 @@ class EthereumClient(BlockchainClient):
             blockchain_nodes_domains.append(blockchain_node_domain)
         return ', '.join(blockchain_nodes_domains)
 
+    def __get_nonce(self, node_connections: NodeConnections,
+                    internal_transfer_id: int) -> int:
+        transaction_count = node_connections.eth.get_transaction_count(
+            self.__address).get_maximum_result()
+        database_access.update_transfer_nonce(internal_transfer_id,
+                                              self.get_blockchain(),
+                                              transaction_count)
+        nonce = database_access.read_transfer_nonce(internal_transfer_id)
+        assert nonce is not None
+        return nonce
+
     def __submit_transfer_to_request(
             self, node_connections: NodeConnections, internal_transfer_id: int,
             on_chain_request: _OnChainTransferToRequest,
@@ -499,14 +510,7 @@ class EthereumClient(BlockchainClient):
             self._get_config()['min_adaptable_fee_per_gas']
         max_total_fee_per_gas = self._get_config().get('max_total_fee_per_gas')
         amount = None
-        transaction_count = typing.cast(
-            int,
-            node_connections.eth.get_transaction_count(
-                self.__address).get_maximum_result())
-        database_access.update_transfer_nonce(internal_transfer_id,
-                                              self.get_blockchain(),
-                                              transaction_count)
-        nonce = database_access.read_transfer_nonce(internal_transfer_id)
+        nonce = self.__get_nonce(node_connections, internal_transfer_id)
         adaptable_fee_increase_factor = \
             self._get_config()['adaptable_fee_increase_factor']
         blocks_until_resubmission = \

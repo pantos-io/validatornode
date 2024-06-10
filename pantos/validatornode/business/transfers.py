@@ -303,6 +303,12 @@ class TransferInteractor(Interactor):
                 if transfer.is_reversal_transfer else
                 'outgoing token transfer confirmed', extra=vars(transfer)
                 | {'interal_transfer_id': internal_transfer_id})
+            if transfer.is_reversal_transfer:
+                database_access.update_reversal_transfer(
+                    internal_transfer_id,
+                    transfer.eventual_destination_blockchain,
+                    transfer.eventual_recipient_address,
+                    transfer.eventual_destination_token_address)
             validator_nonce = \
                 database_access.read_validator_nonce_by_internal_transfer_id(
                     internal_transfer_id)
@@ -312,9 +318,7 @@ class TransferInteractor(Interactor):
                 source_blockchain_client if transfer.is_reversal_transfer else
                 destination_blockchain_client)
             database_access.update_transfer_submitted_destination_transaction(
-                internal_transfer_id, transfer.eventual_destination_blockchain,
-                transfer.eventual_recipient_address,
-                transfer.eventual_destination_token_address,
+                internal_transfer_id,
                 submission_response.destination_hub_address,
                 submission_response.destination_forwarder_address)
             database_access.update_transfer_status(
