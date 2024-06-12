@@ -5,6 +5,7 @@ import typing
 
 from pantos.common.exceptions import ErrorCreator
 
+from pantos.validatornode.configuration import config
 from pantos.validatornode.exceptions import ValidatorNodeError
 
 
@@ -74,3 +75,6 @@ class Interactor(ErrorCreator[InteractorError]):
             self, **kwargs: typing.Any) -> InteractorError:
         return self._create_error(specialized_error_class=UnknownTransferError,
                                   **kwargs)
+
+    def _is_primary_node(self) -> bool:
+        return config['application']['mode'] == 'primary'

@@ -258,6 +258,66 @@ class TransferInteractor(Interactor):
                 source_blockchain=source_blockchain,
                 source_transaction_id=source_transaction_id)
 
+    def submit_transfer_onchain(self, internal_transfer_id: int,
+                                transfer: CrossChainTransfer) -> bool:
+        """Submit a cross-chain token transfer after its successful
+        validation to the destination blockchain.
+
+        Parameters
+        ----------
+        internal_transfer_id : int
+            The unique internal ID of the transfer.
+        transfer : CrossChainTransfer
+            The data of the cross-chain token transfer to submit.
+
+        Returns
+        -------
+        bool
+            True if the submission is completed for the transfer.
+
+        Raises
+        ------
+        TransferInteractorError
+            If an error occurs during submitting the cross-chain token
+            transfer.
+
+        """
+        _logger.info(
+            'submitting a token transfer to the destination blockchain',
+            extra=vars(transfer)
+            | {'interal_transfer_id': internal_transfer_id})
+        try:
+            blockchain_client = get_blockchain_client(
+                transfer.eventual_destination_blockchain)
+            validator_nonce = \
+                database_access.read_validator_nonce_by_internal_transfer_id(
+                    internal_transfer_id)
+            assert validator_nonce is not None
+            submission_response = self.__submit_transaction(
+                internal_transfer_id, transfer, validator_nonce,
+                blockchain_client)
+            database_access.update_transfer_submitted_destination_transaction(
+                internal_transfer_id,
+                submission_response.destination_hub_address,
+                submission_response.destination_forwarder_address)
+            database_access.update_transfer_status(
+                internal_transfer_id,
+                TransferStatus.SOURCE_REVERSAL_TRANSACTION_SUBMITTED
+                if transfer.is_reversal_transfer else
+                TransferStatus.DESTINATION_TRANSACTION_SUBMITTED)
+            confirm_transfer_task.delay(
+                internal_transfer_id,
+                str(submission_response.internal_transaction_id),
+                transfer.to_dict())
+            return True
+        except TransferInteractor.__PermanentTransferSubmissionError:
+            return True
+        except Exception:
+            raise self._create_error(
+                'unable to submit a token transfer to the destination '
+                'blockchain', internal_transfer_id=internal_transfer_id,
+                transfer=transfer)
+
     def validate_transfer(self, internal_transfer_id: int,
                           transfer: CrossChainTransfer) -> bool:
         """Validate a cross-chain token transfer.
@@ -282,7 +342,7 @@ class TransferInteractor(Interactor):
 
         """
         _logger.info(
-            'validating token transfer', extra=vars(transfer)
+            'validating a token transfer', extra=vars(transfer)
             | {'interal_transfer_id': internal_transfer_id})
         try:
             source_blockchain_client = get_blockchain_client(
@@ -309,36 +369,23 @@ class TransferInteractor(Interactor):
                     transfer.eventual_destination_blockchain,
                     transfer.eventual_recipient_address,
                     transfer.eventual_destination_token_address)
-            validator_nonce = \
-                database_access.read_validator_nonce_by_internal_transfer_id(
-                    internal_transfer_id)
-            assert validator_nonce is not None
-            submission_response = self.__submit_transaction(
-                internal_transfer_id, transfer, validator_nonce,
-                source_blockchain_client if transfer.is_reversal_transfer else
-                destination_blockchain_client)
-            database_access.update_transfer_submitted_destination_transaction(
-                internal_transfer_id,
-                submission_response.destination_hub_address,
-                submission_response.destination_forwarder_address)
-            database_access.update_transfer_status(
-                internal_transfer_id,
-                TransferStatus.SOURCE_REVERSAL_TRANSACTION_SUBMITTED
-                if transfer.is_reversal_transfer else
-                TransferStatus.DESTINATION_TRANSACTION_SUBMITTED)
-            confirm_transfer_task.delay(
-                internal_transfer_id,
-                str(submission_response.internal_transaction_id),
-                transfer.to_dict())
+            if self._is_primary_node():
+                submit_transfer_onchain_task.delay(internal_transfer_id,
+                                                   transfer.to_dict())
+            else:
+                raise NotImplementedError  # pragma: no cover
             return True
         except TransferInteractor.__TransferValidationError as error:
             return error.is_permanent()
         except TransferInteractorError:
             raise
         except Exception:
-            raise self._create_error(
-                'unable to validate a cross-chain token transfer',
-                internal_transfer_id=internal_transfer_id, transfer=transfer)
+            raise self._create_error('unable to validate a token transfer',
+                                     internal_transfer_id=internal_transfer_id,
+                                     transfer=transfer)
+
+    class __PermanentTransferSubmissionError(Exception):
+        pass
 
     class __TransferValidationError(Exception, abc.ABC):
         @abc.abstractmethod
@@ -393,7 +440,7 @@ class TransferInteractor(Interactor):
                 TransferStatus.SOURCE_REVERSAL_TRANSACTION_FAILED
                 if transfer.is_reversal_transfer else
                 TransferStatus.DESTINATION_TRANSACTION_FAILED)
-            raise TransferInteractor.__PermanentTransferValidationError
+            raise TransferInteractor.__PermanentTransferSubmissionError
         except Exception:
             database_access.update_transfer_status(
                 internal_transfer_id,
@@ -613,7 +660,7 @@ def confirm_transfer_task(self, internal_transfer_id: int,
             internal_transfer_id, uuid.UUID(internal_transaction_id), transfer)
     except Exception as error:
         _logger.error(
-            'unable to confirm token transfer on the destination blockchain',
+            'unable to confirm a token transfer on the destination blockchain',
             extra=vars(transfer)
             | {
                 'internal_transfer_id': internal_transfer_id,
@@ -625,6 +672,48 @@ def confirm_transfer_task(self, internal_transfer_id: int,
         raise self.retry(countdown=retry_interval, exc=error)
     if not confirmation_completed:
         retry_interval = config['tasks']['confirm_transfer'][
+            'retry_interval_in_seconds']
+        raise self.retry(countdown=retry_interval)
+    return True
+
+
+@celery_app.task(bind=True, max_retries=None)
+def submit_transfer_onchain_task(
+        self, internal_transfer_id: int,
+        transfer_dict: CrossChainTransferDict) -> bool:
+    """Celery task for submitting a cross-chain token transfer after its
+    successful validation to the destination blockchain.
+
+    Parameters
+    ----------
+    internal_transfer_id : int
+        The unique internal ID of the transfer.
+    transfer_dict : CrossChainTransferDict
+        The data of the cross-chain token transfer to submit.
+
+    Returns
+    -------
+    bool
+        True if the task is executed without error.
+
+    """
+    transfer = CrossChainTransfer.from_dict(transfer_dict)
+    try:
+        submission_completed = TransferInteractor().submit_transfer_onchain(
+            internal_transfer_id, transfer)
+    except Exception as error:
+        _logger.error(
+            'unable to submit a token transfer to the destination blockchain',
+            extra=vars(transfer)
+            | {
+                'internal_transfer_id': internal_transfer_id,
+                'task_id': self.request.id
+            }, exc_info=True)
+        retry_interval = config['tasks']['submit_transfer_onchain'][
+            'retry_interval_after_error_in_seconds']
+        raise self.retry(countdown=retry_interval, exc=error)
+    if not submission_completed:
+        retry_interval = config['tasks']['submit_transfer_onchain'][
             'retry_interval_in_seconds']
         raise self.retry(countdown=retry_interval)
     return True
@@ -654,7 +743,7 @@ def validate_transfer_task(self, internal_transfer_id: int,
             internal_transfer_id, transfer)
     except Exception as error:
         _logger.error(
-            'unable to validate token transfer ', extra=vars(transfer)
+            'unable to validate a token transfer', extra=vars(transfer)
             | {
                 'internal_transfer_id': internal_transfer_id,
                 'task_id': self.request.id
