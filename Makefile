@@ -1,7 +1,7 @@
 PANTOS_VERSION := $(shell poetry version -s)
 PANTOS_REVISION ?= 1
 PANTOS_VALIDATOR_NODE_SSH_HOST ?= bdev-validator-node
-PYTHON_FILES_WITHOUT_TESTS := pantos/validatornode
+PYTHON_FILES_WITHOUT_TESTS := pantos/validatornode linux/start-web-server
 PYTHON_FILES := $(PYTHON_FILES_WITHOUT_TESTS) tests
 
 .PHONY: dist
@@ -101,8 +101,7 @@ dist/pantos-validator-node-$(PANTOS_VERSION)-$(PANTOS_REVISION)_all.deb: linux/ 
 	$(eval build_directory := build/debian/$(debian_package))
 	mkdir -p $(build_directory)/opt/pantos/validator-node
 	cp dist/pantos_validator_node-$(PANTOS_VERSION)-py3-none-any.whl $(build_directory)/opt/pantos/validator-node/
-	mkdir -p $(build_directory)/usr/local/bin
-	cp linux/pantos-validator-node-server $(build_directory)/usr/local/bin/
+	cp linux/start-web-server $(build_directory)/opt/pantos/validator-node/
 	mkdir -p $(build_directory)/etc/systemd/system
 	cp linux/pantos-validator-node-server.service $(build_directory)/etc/systemd/system/
 	cp linux/pantos-validator-node-celery.service $(build_directory)/etc/systemd/system/

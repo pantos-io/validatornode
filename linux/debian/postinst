@@ -14,7 +14,7 @@ env_file="${base_directory}/validator-node-config.env"
 old_env_file="${env_file}.old_$(date +%Y%m%d_%H%M%S)"
 alembic_file="${base_directory}/validator-node-alembic.ini"
 old_alembic_file="${alembic_file}.old_$(date +%Y%m%d_%H%M%S)"
-startup_script_file='/usr/local/bin/pantos-validator-node-server'
+startup_script_file="${application_directory}/start-web-server"
 
 # User names
 postgresql_user='pantos-validator-node'
