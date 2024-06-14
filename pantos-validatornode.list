@@ -1,1 +1,1 @@
-deb [signed-by=/etc/apt/trusted.gpg.d/validatornode.gpg] https://special-adventure-4gllmrn.pages.github.io/ ./
+deb [signed-by=/etc/apt/trusted.gpg.d/validatornode.gpg] https://pantos-io.github.io/validatornode/ ./
