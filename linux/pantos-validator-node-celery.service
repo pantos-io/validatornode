@@ -9,7 +9,7 @@ Restart=always
 RestartSec=1
 KillMode=mixed
 TimeoutStopSec=600
-ExecStart=runuser -u pantos -- bash -c "source /opt/pantos/validator-node/virtual-environment/bin/activate; nohup celery -A pantos.validatornode worker -l INFO -n pantos.validatornode -Q pantos.validatornode >> /var/log/pantos/validator-node-celery.log 2>&1 &"
+ExecStart=runuser -u pantos-validator-node -- bash -c "source /opt/pantos/validator-node/virtual-environment/bin/activate; nohup celery -A pantos.validatornode worker -l INFO -n pantos.validatornode -Q pantos.validatornode >> /var/log/pantos/validator-node-celery.log 2>&1 &"
 
 [Install]
 WantedBy=multi-user.target
