@@ -179,10 +179,23 @@ _VALIDATION_SCHEMA = {
             },
             'host': {
                 'type': 'string',
-                'empty': False
+                'empty': False,
+                'required': True
             },
             'port': {
-                'type': 'integer'
+                'type': 'integer',
+                'min': 0,
+                'required': True
+            },
+            'ssl_certificate': {
+                'type': 'string',
+                'dependencies': 'ssl_private_key',
+                'empty': False
+            },
+            'ssl_private_key': {
+                'type': 'string',
+                'dependencies': 'ssl_certificate',
+                'empty': False
             },
             'mode': {
                 'type': 'string',
