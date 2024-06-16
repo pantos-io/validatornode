@@ -18,6 +18,10 @@ _RECIPIENT_ADDRESS = '0x52c303919766e8063DEFB775eE96ca9ff1dE4fA5'
 
 _SOURCE_TOKEN_ADDRESS = '0xabd53da7ed2d182F48Fb835363107868306098b1'
 
+_DESTINATION_HUB_ADDRESS = '0xc4FE8209798A8fF786555fE3f2E6d1e56b851860'
+
+_DESTINATION_FORWARDER_ADDRESS = '0xb3D0CC89843Bf92ED3Bcc66143C7De744f58557B'
+
 _DESTINATION_TOKEN_ADDRESS = '0x8AB7AaE817572f649a0E0019320136fFfD5B0892'
 
 _AMOUNT = 4588 * 10**18
@@ -63,6 +67,16 @@ def recipient_address():
 @pytest.fixture
 def source_token_address():
     return _SOURCE_TOKEN_ADDRESS
+
+
+@pytest.fixture
+def destination_hub_address():
+    return _DESTINATION_HUB_ADDRESS
+
+
+@pytest.fixture
+def destination_forwarder_address():
+    return _DESTINATION_FORWARDER_ADDRESS
 
 
 @pytest.fixture

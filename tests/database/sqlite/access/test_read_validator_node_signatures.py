@@ -44,6 +44,6 @@ def test_read_validator_node_signatures_correct(
     initialized_database_session.commit()
     results = read_validator_node_signatures(transfer.id)
     assert len(results) == number_signatures
-    for i, result in enumerate(results):
-        assert result[0] == validator_node_addresses[i]
-        assert result[1] == signatures[i]
+    for i, validator_node_address in enumerate(results):
+        assert validator_node_address == validator_node_addresses[i]
+        assert results[validator_node_address] == signatures[i]

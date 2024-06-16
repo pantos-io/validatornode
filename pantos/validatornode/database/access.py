@@ -2,7 +2,6 @@
 records.
 
 """
-import collections.abc
 import dataclasses
 import datetime
 import logging
@@ -399,9 +398,8 @@ def read_validator_node_signature(
         return session.execute(statement).scalar_one_or_none()
 
 
-def read_validator_node_signatures(internal_transfer_id: int) \
-        -> collections.abc.Sequence[collections.abc.Sequence[
-            tuple[BlockchainAddress, str]]]:
+def read_validator_node_signatures(
+        internal_transfer_id: int) -> dict[BlockchainAddress, str]:
     """Read the validator node signatures for a cross-chain transfer.
 
     Parameters
@@ -411,9 +409,9 @@ def read_validator_node_signatures(internal_transfer_id: int) \
 
     Returns
     -------
-    collections.abc.Sequence
-        A sequence of tuples of validator node addresses and the
-        corresponding signatures.
+    dict
+        The validator node addresses as keys and their corresponding
+        signatures as values.
 
     """
     statement = sqlalchemy.select(
@@ -421,7 +419,8 @@ def read_validator_node_signatures(internal_transfer_id: int) \
             ValidatorNodeSignature, ValidatorNode).where(
                 ValidatorNodeSignature.transfer_id == internal_transfer_id)
     with get_session() as session:
-        return session.execute(statement).all()
+        results = session.execute(statement).all()
+    return {BlockchainAddress(result[0]): result[1] for result in results}
 
 
 def read_validator_nonce_by_internal_transfer_id(

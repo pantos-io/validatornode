@@ -13,6 +13,7 @@ from pantos.common.entities import TransactionStatus
 from pantos.common.types import BlockchainAddress
 
 from pantos.validatornode.blockchains.base import BlockchainClient
+from pantos.validatornode.blockchains.base import BlockchainClientError
 from pantos.validatornode.blockchains.base import NonMatchingForwarderError
 from pantos.validatornode.blockchains.base import \
     SourceTransferIdAlreadyUsedError
@@ -282,33 +283,65 @@ class TransferInteractor(Interactor):
             transfer.
 
         """
-        _logger.info(
-            'submitting a token transfer to the destination blockchain',
-            extra=vars(transfer)
-            | {'interal_transfer_id': internal_transfer_id})
+        assert self._is_primary_node()
         try:
-            blockchain_client = get_blockchain_client(
+            destination_blockchain_client = get_blockchain_client(
                 transfer.eventual_destination_blockchain)
-            validator_nonce = \
-                database_access.read_validator_nonce_by_internal_transfer_id(
+            destination_blockchain_config = get_blockchain_config(
+                transfer.eventual_destination_blockchain)
+            destination_hub_address = destination_blockchain_config['hub']
+            destination_forwarder_address = destination_blockchain_config[
+                'forwarder']
+            validator_nonce = database_access.\
+                read_validator_nonce_by_internal_transfer_id(
                     internal_transfer_id)
             assert validator_nonce is not None
-            submission_response = self.__submit_transaction(
+            available_signatures = database_access.\
+                read_validator_node_signatures(internal_transfer_id)
+            extra_info = vars(transfer) | {
+                'interal_transfer_id': internal_transfer_id,
+                'validator_nonce': validator_nonce,
+                'destination_hub_address': destination_hub_address,
+                'destination_forwarder_address': destination_forwarder_address
+            }
+
+            if not self.__sufficient_secondary_node_signatures(
+                    transfer, validator_nonce, available_signatures,
+                    destination_blockchain_client, extra_info):
+                _logger.info(
+                    'insufficient signatures for submitting a token transfer '
+                    'to the destination blockchain', extra=extra_info)
+                return False
+            self.__add_primary_node_signature(available_signatures, transfer,
+                                              validator_nonce,
+                                              destination_hub_address,
+                                              destination_forwarder_address,
+                                              destination_blockchain_client)
+
+            _logger.info(
+                'submitting a token transfer to the destination blockchain',
+                extra=extra_info)
+            internal_transaction_id = self.__submit_transaction(
                 internal_transfer_id, transfer, validator_nonce,
-                blockchain_client)
+                available_signatures, destination_blockchain_client)
+
+            primary_node_address = \
+                destination_blockchain_client.get_own_address()
+            database_access.create_validator_node_signature(
+                internal_transfer_id, transfer.eventual_destination_blockchain,
+                destination_forwarder_address, primary_node_address,
+                available_signatures[primary_node_address])
             database_access.update_transfer_submitted_destination_transaction(
-                internal_transfer_id,
-                submission_response.destination_hub_address,
-                submission_response.destination_forwarder_address)
+                internal_transfer_id, destination_hub_address,
+                destination_forwarder_address)
             database_access.update_transfer_status(
                 internal_transfer_id,
                 TransferStatus.SOURCE_REVERSAL_TRANSACTION_SUBMITTED
                 if transfer.is_reversal_transfer else
                 TransferStatus.DESTINATION_TRANSACTION_SUBMITTED)
-            confirm_transfer_task.delay(
-                internal_transfer_id,
-                str(submission_response.internal_transaction_id),
-                transfer.to_dict())
+            confirm_transfer_task.delay(internal_transfer_id,
+                                        str(internal_transaction_id),
+                                        transfer.to_dict())
             return True
         except TransferInteractor.__PermanentTransferSubmissionError:
             return True
@@ -341,9 +374,10 @@ class TransferInteractor(Interactor):
             transfer.
 
         """
-        _logger.info(
-            'validating a token transfer', extra=vars(transfer)
-            | {'interal_transfer_id': internal_transfer_id})
+        extra_info = vars(transfer) | {
+            'interal_transfer_id': internal_transfer_id
+        }
+        _logger.info('validating a token transfer', extra=extra_info)
         try:
             source_blockchain_client = get_blockchain_client(
                 transfer.source_blockchain)
@@ -361,8 +395,7 @@ class TransferInteractor(Interactor):
             _logger.info(
                 'incoming token transfer not feasible'
                 if transfer.is_reversal_transfer else
-                'outgoing token transfer confirmed', extra=vars(transfer)
-                | {'interal_transfer_id': internal_transfer_id})
+                'outgoing token transfer confirmed', extra=extra_info)
             if transfer.is_reversal_transfer:
                 database_access.update_reversal_transfer(
                     internal_transfer_id,
@@ -400,6 +433,21 @@ class TransferInteractor(Interactor):
         def is_permanent(self) -> bool:
             return False
 
+    def __add_primary_node_signature(
+            self, signatures: dict[BlockchainAddress,
+                                   str], transfer: CrossChainTransfer,
+            validator_nonce: int, destination_hub_address: BlockchainAddress,
+            destination_forwarder_address: BlockchainAddress,
+            destination_blockchain_client: BlockchainClient) -> None:
+        assert self._is_primary_node()
+        primary_node_address = destination_blockchain_client.get_own_address()
+        sign_request = BlockchainClient.TransferToMessageSignRequest(
+            transfer, validator_nonce, destination_hub_address,
+            destination_forwarder_address)
+        primary_node_signature = destination_blockchain_client.\
+            sign_transfer_to_message(sign_request)
+        signatures[primary_node_address] = primary_node_signature
+
     def __find_unused_validator_nonce(
             self, destination_blockchain: Blockchain) -> int:
         destination_blockchain_client = get_blockchain_client(
@@ -422,12 +470,13 @@ class TransferInteractor(Interactor):
 
     def __submit_transaction(
             self, internal_transfer_id: int, transfer: CrossChainTransfer,
-            validator_nonce: int, blockchain_client: BlockchainClient) \
-            -> BlockchainClient.TransferToSubmissionStartResponse:
+            validator_nonce: int, signatures: dict[BlockchainAddress, str],
+            destination_blockchain_client: BlockchainClient) -> uuid.UUID:
         request = BlockchainClient.TransferToSubmissionStartRequest(
-            internal_transfer_id, transfer, validator_nonce)
+            internal_transfer_id, transfer, validator_nonce, signatures)
         try:
-            return blockchain_client.start_transfer_to_submission(request)
+            return destination_blockchain_client.start_transfer_to_submission(
+                request)
         except (NonMatchingForwarderError,
                 SourceTransferIdAlreadyUsedError) as error:
             _logger.error(
@@ -448,6 +497,43 @@ class TransferInteractor(Interactor):
                 if transfer.is_reversal_transfer else
                 TransferStatus.DESTINATION_TRANSACTION_FAILED)
             raise
+
+    def __sufficient_secondary_node_signatures(
+            self, transfer: CrossChainTransfer, validator_nonce: int,
+            signatures: dict[BlockchainAddress, str],
+            destination_blockchain_client: BlockchainClient,
+            extra_info: dict[str, typing.Any]) -> bool:
+        assert self._is_primary_node()
+        valid_signatures = 1  # Primary node signature
+        primary_node_address = destination_blockchain_client.get_own_address()
+        for signer_address, signature in signatures.items():
+            if signer_address == primary_node_address:
+                continue
+            signer_recovery_request = \
+                BlockchainClient.TransferToSignerAddressRecoveryRequest(
+                    transfer.source_blockchain, transfer.source_transaction_id,
+                    transfer.source_transfer_id, transfer.sender_address,
+                    transfer.recipient_address, transfer.source_token_address,
+                    transfer.eventual_destination_token_address,
+                    transfer.amount, validator_nonce, signature)
+            try:
+                recovered_signer_address = destination_blockchain_client.\
+                    recover_transfer_to_signer_address(signer_recovery_request)
+            except BlockchainClientError:
+                _logger.critical(
+                    'invalid secondary node signature for submitting a token '
+                    'transfer to the destination blockchain',
+                    extra=extra_info | {
+                        'signer_address': signer_address,
+                        'signature': signature
+                    }, exc_info=True)
+                continue
+            assert destination_blockchain_client.is_equal_address(
+                signer_address, recovered_signer_address)
+            valid_signatures += 1
+        minimum_signatures = destination_blockchain_client.\
+            read_minimum_validator_node_signatures()
+        return valid_signatures >= minimum_signatures
 
     def __validate_destination_blockchain_feasibility(
             self, internal_transfer_id: int, transfer: CrossChainTransfer,

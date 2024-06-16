@@ -98,6 +98,17 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
                 f'unable to initialize the {self.get_blockchain_name()} '
                 'utilities')
 
+    def get_own_address(self) -> BlockchainAddress:
+        """Get the validator node's own address on the blockchain.
+
+        Returns
+        -------
+        BlockchainAddress
+            The validator node's address.
+
+        """
+        pass  # pragma: no cover
+
     def get_utilities(self) -> BlockchainUtilities:
         """Get the blockchain utilities associated with the blockchain
         client.
@@ -244,6 +255,27 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
         """
         pass  # pragma: no cover
 
+    @abc.abstractmethod
+    def read_minimum_validator_node_signatures(self) -> int:
+        """Read the minimum number of required Pantos validator node
+        signatures for validating a cross-chain transfer.
+
+        Returns
+        -------
+        int
+            The minimum number of signatures.
+
+        Raises
+        ------
+        ResultsNotMatchingError
+            If the results given by the configured blockchain
+            nodes do not match.
+        BlockchainClientError
+            If the minimum number of signatures cannot be read.
+
+        """
+        pass  # pragma: no cover
+
     @dataclasses.dataclass
     class ReadOutgoingTransfersFromBlockResponse:
         """Response data for reading the outgoing Pantos transfers from
@@ -348,6 +380,9 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
 
         Raises
         ------
+        ResultsNotMatchingError
+            If the results given by the configured blockchain
+            nodes do not match.
         BlockchainClientError
             If the validator node addresses cannot be read.
 
@@ -424,6 +459,54 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
         pass  # pragma: no cover
 
     @dataclasses.dataclass
+    class TransferToMessageSignRequest:
+        """Request data for signing a Pantos transferTo message.
+
+        Attributes
+        ----------
+        incoming_transfer : CrossChainTransfer
+            The transfer data.
+        validator_nonce : int
+            The nonce of the validator nodes at the Pantos Forwarder
+            contract on the (eventual) destination blockchain.
+        destination_hub_address : BlockchainAddress
+            The address of the Pantos Hub contract on the (eventual)
+            destination blockchain.
+        destination_forwarder_address : BlockchainAddress
+            The address of the Pantos Forwarder contract on the
+            (eventual) destination blockchain.
+
+        """
+        incoming_transfer: CrossChainTransfer
+        validator_nonce: int
+        destination_hub_address: BlockchainAddress
+        destination_forwarder_address: BlockchainAddress
+
+    @abc.abstractmethod
+    def sign_transfer_to_message(self,
+                                 request: TransferToMessageSignRequest) -> str:
+        """Sign a Pantos transferTo message.
+
+        Parameters
+        ----------
+        request : TransferToMessageSignRequest
+            The request data.
+
+        Returns
+        -------
+        str
+            The current validator node's signature for the transferTo
+            message.
+
+        Raises
+        ------
+        BlockchainClientError
+            If the transferTo message cannot be signed.
+
+        """
+        pass  # pragma: no cover
+
+    @dataclasses.dataclass
     class TransferToSubmissionStartRequest:
         """Request data for starting a transferTo submission.
 
@@ -435,37 +518,21 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
             The transfer data.
         validator_nonce : int
             The nonce of the validator nodes at the Pantos Forwarder
-            contract of the destination blockchain.
+            contract on the (eventual) destination blockchain.
+        validator_node_signatures : dict
+            The validator node addresses on the (eventual) destination
+            blockchain as keys and their corresponding transfer
+            signatures as values.
 
         """
         internal_transfer_id: int
         incoming_transfer: CrossChainTransfer
         validator_nonce: int
-
-    @dataclasses.dataclass
-    class TransferToSubmissionStartResponse:
-        """Response data from starting a transferTo submission.
-
-        Attributes
-        ----------
-        internal_transaction_id : uuid.UUID
-            The unique internal transaction ID.
-        destination_hub_address : BlockchainAddress
-            The address of the used Pantos Hub contract on the
-            (eventual) destination blockchain.
-        destination_forwarder_address : BlockchainAddress
-            The address of the used Pantos Forwarder contract on the
-            (eventual) destination blockchain.
-
-        """
-        internal_transaction_id: uuid.UUID
-        destination_hub_address: BlockchainAddress
-        destination_forwarder_address: BlockchainAddress
+        validator_node_signatures: dict[BlockchainAddress, str]
 
     @abc.abstractmethod
     def start_transfer_to_submission(
-            self, request: TransferToSubmissionStartRequest) \
-            -> TransferToSubmissionStartResponse:
+            self, request: TransferToSubmissionStartRequest) -> uuid.UUID:
         """Start a transferTo submission. The transaction is
         automatically resubmitted with higher transaction fees until it
         is included in a block.
@@ -477,8 +544,8 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
 
         Returns
         -------
-        TransferToSubmissionStartResponse
-            The response data.
+        uuid.UUID
+            The unique internal transaction ID.
 
         Raises
         ------

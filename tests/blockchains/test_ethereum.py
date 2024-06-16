@@ -449,11 +449,24 @@ _HUB_ADDRESS = '0x7A9D071aD683B583BfB4cc91c2A21D9bB712Cd32'
 
 _FORWARDER_ADDRESS = '0x7F029687e25D506645030788a54df4B99d837545'
 
+_MINIMUM_VALIDATOR_NODE_SIGNATURES = 3
+
 _VALIDATOR_NODE_ADDRESSES = [
     '0x20B50a828a042B3F01aCB022e0C8A07e817bc9f5',
     '0xC433E88Aa983b552D99Cc98982768f787dE11f18',
     '0x1BE63cf4226F24d5e5C7B64B3bCBf4ceB25aAE31',
     '0x65333C563e7ee024cfe8D171EEBa654D685E90E3'
+]
+
+_VALIDATOR_NODE_SIGNATURES = [
+    '0xedc95ed3d9eae50b63b104d09b09e7f1c5dafac94cd4922d37123a2a24a09b7736e8088'
+    '8e7db95cff4f091989769fc2c52bd918fa1d451cfd38b2b9d4fab977f1b',
+    '0x707481611b0d814d762d9d2f13fb320a7e38207c2fac24cd6a196b1260f9880e1ed94f5'
+    '02c3bbaf25878c720956b66aa76d6a1e3088aedd144c429d730f17ee81c',
+    '0x0ebedff2ee7a275898337345a502c729acc5fe13dc859215f19a57b29c8b20476887e3a'
+    '65595014e2d1510434bc80c66992d724acd87075ad6a46b462a0b596a1c',
+    '0xb7eb2a9e1906cfbf24a824ec5ced0ad5672ac9824884555ca99fe35641c13d78441c3da'
+    '6aacc8ec52bf40a8bf5ef07c68ea15f191be0d98dfcbe4cfb5cc22b401c'
 ]
 
 
@@ -564,6 +577,11 @@ def test_get_blockchain_node_domain_correct(provider, ethereum_client):
     domains = ethereum_client._EthereumClient__get_blockchain_nodes_domains(
         node_connections)
     assert domains == provider[2]
+
+
+def test_get_own_address_correct(ethereum_client):
+    assert (ethereum_client.get_own_address() == web3.Account.from_key(
+        _PRIVATE_KEY).address)
 
 
 @pytest.mark.parametrize('token_active', [True, False])
@@ -697,6 +715,35 @@ def test_read_external_token_address_results_not_matching_error(
     with pytest.raises(ResultsNotMatchingError):
         ethereum_client.read_external_token_address(_TOKEN_ADDRESS,
                                                     Blockchain.BNB_CHAIN)
+
+
+@unittest.mock.patch.object(EthereumClient, '_create_forwarder_contract')
+def test_read_minimum_validator_node_signatures_correct(
+        mock_create_forwarder_contract, ethereum_client):
+    mock_create_forwarder_contract().caller().\
+        getMinimumValidatorNodeSignatures().get.return_value = \
+        _MINIMUM_VALIDATOR_NODE_SIGNATURES
+
+    minimum_signatures = \
+        ethereum_client.read_minimum_validator_node_signatures()
+
+    assert minimum_signatures == _MINIMUM_VALIDATOR_NODE_SIGNATURES
+
+
+@unittest.mock.patch.object(EthereumClient, '_create_forwarder_contract',
+                            side_effect=ResultsNotMatchingError)
+def test_read_minimum_validator_node_signatures_results_not_matching_error(
+        mock_create_forwarder_contract, ethereum_client):
+    with pytest.raises(ResultsNotMatchingError):
+        ethereum_client.read_minimum_validator_node_signatures()
+
+
+@unittest.mock.patch.object(EthereumClient, '_get_config',
+                            return_value={'forwarder': _FORWARDER_ADDRESS})
+def test_read_minimum_validator_node_signatures_other_error(
+        mock_get_config, ethereum_client):
+    with pytest.raises(EthereumClientError):
+        ethereum_client.read_minimum_validator_node_signatures()
 
 
 @pytest.mark.parametrize('from_block_number', [8608490, 8608492])
@@ -841,12 +888,16 @@ def test_read_transfer_to_transaction_data_correct(
             data_response.destination_transfer_id == destination_transfer_id)
 
 
-def test_read_transfer_to_transaction_data_error(ethereum_client, w3):
+@pytest.mark.parametrize('errors',
+                         [(ResultsNotMatchingError, ResultsNotMatchingError),
+                          (Exception, EthereumClientError)])
+def test_read_transfer_to_transaction_data_error(errors, ethereum_client, w3):
     transaction_id = _INCOMING_TRANSFER_TRANSACTION_RECEIPT[
         'transactionHash'].hex()
+
     with unittest.mock.patch.object(w3.eth, 'get_transaction_receipt',
-                                    side_effect=Exception):
-        with pytest.raises(EthereumClientError):
+                                    side_effect=errors[0]):
+        with pytest.raises(errors[1]):
             ethereum_client._read_transfer_to_transaction_data(
                 transaction_id, True)
 
@@ -932,6 +983,80 @@ def test_recover_transfer_to_signer_address_error(mock_get_config,
         ethereum_client.recover_transfer_to_signer_address(request)
 
 
+@unittest.mock.patch.object(
+    EthereumClient, '_get_config', return_value={
+        'hub': _HUB_ADDRESS,
+        'forwarder': _FORWARDER_ADDRESS,
+        'pan_token': _INCOMING_TRANSFER.destination_token_address
+    })
+def test_sign_transfer_to_message_correct(mock_get_config,
+                                          incoming_transfer_message,
+                                          ethereum_client):
+    request = BlockchainClient.TransferToMessageSignRequest(
+        incoming_transfer=_INCOMING_TRANSFER, validator_nonce=_VALIDATOR_NONCE,
+        destination_hub_address=_HUB_ADDRESS,
+        destination_forwarder_address=_FORWARDER_ADDRESS)
+    signature = ethereum_client.sign_transfer_to_message(request)
+
+    signer_address = web3.Account.recover_message(incoming_transfer_message,
+                                                  signature=signature)
+    assert signer_address == web3.Account.from_key(_PRIVATE_KEY).address
+
+
+def test_sign_transfer_to_message_destination_blockchain_error(
+        ethereum_client):
+    incoming_transfer = _OUTGOING_TRANSFERS[0]
+    assert incoming_transfer.destination_blockchain is not Blockchain.ETHEREUM
+
+    request = BlockchainClient.TransferToMessageSignRequest(
+        incoming_transfer=incoming_transfer, validator_nonce=_VALIDATOR_NONCE,
+        destination_hub_address=_HUB_ADDRESS,
+        destination_forwarder_address=_FORWARDER_ADDRESS)
+    with pytest.raises(EthereumClientError) as exception_info:
+        ethereum_client.sign_transfer_to_message(request)
+
+    assert exception_info.value.details['request'] == request
+
+
+@unittest.mock.patch('web3.Account.sign_message', side_effect=Exception)
+@unittest.mock.patch.object(
+    EthereumClient, '_get_config', return_value={
+        'hub': _HUB_ADDRESS,
+        'forwarder': _FORWARDER_ADDRESS,
+        'pan_token': _INCOMING_TRANSFER.destination_token_address
+    })
+def test_sign_transfer_to_message_sign_message_error(mock_get_config,
+                                                     mock_sign_message,
+                                                     ethereum_client):
+    request = BlockchainClient.TransferToMessageSignRequest(
+        incoming_transfer=_INCOMING_TRANSFER, validator_nonce=_VALIDATOR_NONCE,
+        destination_hub_address=_HUB_ADDRESS,
+        destination_forwarder_address=_FORWARDER_ADDRESS)
+    with pytest.raises(EthereumClientError) as exception_info:
+        ethereum_client.sign_transfer_to_message(request)
+
+    assert exception_info.value.details['request'] == request
+
+
+def test_sort_validator_node_signatures_correct(ethereum_client):
+    request = dict(zip(_VALIDATOR_NODE_ADDRESSES, _VALIDATOR_NODE_SIGNATURES))
+    sorted_signer_addresses, sorted_signatures = ethereum_client.\
+        _EthereumClient__sort_validator_node_signatures(request)
+
+    assert set(sorted_signer_addresses) == set(_VALIDATOR_NODE_ADDRESSES)
+    assert set(sorted_signatures) == set(_VALIDATOR_NODE_SIGNATURES)
+    assert len(sorted_signer_addresses) == 4
+    assert len(sorted_signatures) == 4
+    assert sorted_signer_addresses[0] == _VALIDATOR_NODE_ADDRESSES[2]
+    assert sorted_signatures[0] == _VALIDATOR_NODE_SIGNATURES[2]
+    assert sorted_signer_addresses[1] == _VALIDATOR_NODE_ADDRESSES[0]
+    assert sorted_signatures[1] == _VALIDATOR_NODE_SIGNATURES[0]
+    assert sorted_signer_addresses[2] == _VALIDATOR_NODE_ADDRESSES[3]
+    assert sorted_signatures[2] == _VALIDATOR_NODE_SIGNATURES[3]
+    assert sorted_signer_addresses[3] == _VALIDATOR_NODE_ADDRESSES[1]
+    assert sorted_signatures[3] == _VALIDATOR_NODE_SIGNATURES[1]
+
+
 @unittest.mock.patch(
     'pantos.validatornode.blockchains.ethereum.database_access')
 @unittest.mock.patch.object(EthereumClient, '_create_hub_contract')
@@ -943,7 +1068,6 @@ def test_start_transfer_to_submission_correct(mock_get_config,
                                               node_connections, w3):
     mock_config = {
         'hub': '0xFB37499DC5401Dc39a0734df1fC7924d769721d5',
-        'forwarder': '0x77aa11CfeD2bce4BE6d1f781077691DA1FcB6526',
         'pan_token': _INCOMING_TRANSFER.destination_token_address,
         'min_adaptable_fee_per_gas': 1000000000,
         'max_total_fee_per_gas': 50000000000,
@@ -968,7 +1092,8 @@ def test_start_transfer_to_submission_correct(mock_get_config,
     mock_start_transaction_submission.return_value = internal_transaction_id
 
     request = BlockchainClient.TransferToSubmissionStartRequest(
-        internal_transfer_id, _INCOMING_TRANSFER, _VALIDATOR_NONCE)
+        internal_transfer_id, _INCOMING_TRANSFER, _VALIDATOR_NONCE,
+        dict(zip(_VALIDATOR_NODE_ADDRESSES, _VALIDATOR_NODE_SIGNATURES)))
     with unittest.mock.patch.object(ethereum_client.get_utilities(),
                                     'start_transaction_submission',
                                     mock_start_transaction_submission):
@@ -976,28 +1101,22 @@ def test_start_transfer_to_submission_correct(mock_get_config,
                                         return_value=blockchain_nonce):
             response = ethereum_client.start_transfer_to_submission(request)
 
-    assert response.internal_transaction_id == internal_transaction_id
-    assert (response.destination_hub_address == BlockchainAddress(
-        mock_config['hub']))
-    assert (response.destination_forwarder_address == BlockchainAddress(
-        mock_config['forwarder']))
+    assert response == internal_transaction_id
     mock_database_access.update_transfer_nonce.assert_called_once_with(
         internal_transfer_id, Blockchain.ETHEREUM, blockchain_nonce)
     mock_start_transaction_submission.assert_called_once()
 
 
-@unittest.mock.patch.object(EthereumClient,
-                            '_EthereumClient__create_transfer_to_signature')
 @unittest.mock.patch.object(EthereumClient, '_create_hub_contract')
 @unittest.mock.patch.object(EthereumClient, '_get_config')
 def test_start_transfer_to_submission_node_communication_error(
-        mock_get_config, mock_create_hub_contract,
-        mock_create_transfer_to_signature, ethereum_client, w3):
+        mock_get_config, mock_create_hub_contract, ethereum_client, w3):
     internal_transfer_id = 24526
     error_message = 'some blockchain node error message'
 
     request = BlockchainClient.TransferToSubmissionStartRequest(
-        internal_transfer_id, _INCOMING_TRANSFER, _VALIDATOR_NONCE)
+        internal_transfer_id, _INCOMING_TRANSFER, _VALIDATOR_NONCE,
+        dict(zip(_VALIDATOR_NODE_ADDRESSES, _VALIDATOR_NODE_SIGNATURES)))
     with unittest.mock.patch.object(w3.eth, 'get_transaction_count',
                                     side_effect=Exception(error_message)):
         with pytest.raises(EthereumClientError) as exception_info:
@@ -1014,7 +1133,8 @@ def test_start_transfer_to_submission_destination_blockchain_error(
     assert incoming_transfer.destination_blockchain is not Blockchain.ETHEREUM
 
     request = BlockchainClient.TransferToSubmissionStartRequest(
-        internal_transfer_id, incoming_transfer, _VALIDATOR_NONCE)
+        internal_transfer_id, incoming_transfer, _VALIDATOR_NONCE,
+        dict(zip(_VALIDATOR_NODE_ADDRESSES, _VALIDATOR_NODE_SIGNATURES)))
     with pytest.raises(EthereumClientError) as exception_info:
         ethereum_client.start_transfer_to_submission(request)
 
@@ -1026,18 +1146,16 @@ def test_start_transfer_to_submission_destination_blockchain_error(
     [TransactionNonceTooLowError, TransactionUnderpricedError])
 @unittest.mock.patch(
     'pantos.validatornode.blockchains.ethereum.database_access')
-@unittest.mock.patch.object(EthereumClient,
-                            '_EthereumClient__create_transfer_to_signature')
 @unittest.mock.patch.object(EthereumClient, '_create_hub_contract')
 @unittest.mock.patch.object(EthereumClient, '_get_config')
 def test_start_transfer_to_submission_transaction_error(
-        mock_get_config, mock_create_hub_contract,
-        mock_create_transfer_to_signature, mock_database_access,
+        mock_get_config, mock_create_hub_contract, mock_database_access,
         transaction_error, ethereum_client):
     internal_transfer_id = 19484
 
     request = BlockchainClient.TransferToSubmissionStartRequest(
-        internal_transfer_id, _INCOMING_TRANSFER, _VALIDATOR_NONCE)
+        internal_transfer_id, _INCOMING_TRANSFER, _VALIDATOR_NONCE,
+        dict(zip(_VALIDATOR_NODE_ADDRESSES, _VALIDATOR_NODE_SIGNATURES)))
     with unittest.mock.patch.object(ethereum_client.get_utilities(),
                                     'start_transaction_submission',
                                     side_effect=transaction_error):
@@ -1056,13 +1174,10 @@ def test_start_transfer_to_submission_transaction_error(
      ('PantosHub: Forwarder of Hub and transferred token must match',
       NonMatchingForwarderError),
      ('some unknown error message', EthereumClientError)])
-@unittest.mock.patch.object(EthereumClient,
-                            '_EthereumClient__create_transfer_to_signature')
 @unittest.mock.patch.object(EthereumClient, '_create_hub_contract')
 @unittest.mock.patch.object(EthereumClient, '_get_config')
 def test_start_transfer_to_submission_verify_transfer_error(
-        mock_get_config, mock_create_hub_contract,
-        mock_create_transfer_to_signature, verify_transfer_to_error,
+        mock_get_config, mock_create_hub_contract, verify_transfer_to_error,
         ethereum_client):
     internal_transfer_id = 91734
     mock_hub_contract = unittest.mock.MagicMock()
@@ -1074,6 +1189,20 @@ def test_start_transfer_to_submission_verify_transfer_error(
     mock_create_hub_contract.return_value = mock_hub_contract
 
     request = BlockchainClient.TransferToSubmissionStartRequest(
-        internal_transfer_id, _INCOMING_TRANSFER, _VALIDATOR_NONCE)
+        internal_transfer_id, _INCOMING_TRANSFER, _VALIDATOR_NONCE,
+        dict(zip(_VALIDATOR_NODE_ADDRESSES, _VALIDATOR_NODE_SIGNATURES)))
     with pytest.raises(verify_transfer_to_error[1]):
+        ethereum_client.start_transfer_to_submission(request)
+
+
+@unittest.mock.patch.object(EthereumClient, '_create_hub_contract',
+                            side_effect=ResultsNotMatchingError)
+def test_start_transfer_to_submission_results_not_matching_error(
+        mock_create_hub_contract, ethereum_client):
+    internal_transfer_id = 273695
+
+    request = BlockchainClient.TransferToSubmissionStartRequest(
+        internal_transfer_id, _INCOMING_TRANSFER, _VALIDATOR_NONCE,
+        dict(zip(_VALIDATOR_NODE_ADDRESSES, _VALIDATOR_NODE_SIGNATURES)))
+    with pytest.raises(ResultsNotMatchingError):
         ethereum_client.start_transfer_to_submission(request)
