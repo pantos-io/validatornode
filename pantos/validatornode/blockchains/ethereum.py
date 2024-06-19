@@ -24,6 +24,7 @@ from pantos.common.blockchains.enums import ContractAbi
 from pantos.common.blockchains.ethereum import EthereumUtilities
 from pantos.common.types import BlockchainAddress
 
+from pantos.validatornode.blockchains.base import VERSIONED_CONTRACTS_ABI
 from pantos.validatornode.blockchains.base import BlockchainClient
 from pantos.validatornode.blockchains.base import BlockchainClientError
 from pantos.validatornode.database import access as database_access
@@ -380,7 +381,9 @@ class EthereumClient(BlockchainClient):
             -> NodeConnections.Wrapper[web3.contract.Contract]:
         forwarder_address = BlockchainAddress(self._get_config()['forwarder'])
         return self.get_utilities().create_contract(
-            forwarder_address, ContractAbi.PANTOS_FORWARDER, node_connections)
+            forwarder_address,
+            VERSIONED_CONTRACTS_ABI[ContractAbi.PANTOS_FORWARDER],
+            node_connections)
 
     def _create_hub_contract(
             self, node_connections: NodeConnections,
@@ -388,17 +391,17 @@ class EthereumClient(BlockchainClient):
             -> NodeConnections.Wrapper[web3.contract.Contract]:
         if hub_address is None:
             hub_address = BlockchainAddress(self._get_config()['hub'])
-        return self.get_utilities().create_contract(hub_address,
-                                                    ContractAbi.PANTOS_HUB,
-                                                    node_connections)
+        return self.get_utilities().create_contract(
+            hub_address, VERSIONED_CONTRACTS_ABI[ContractAbi.PANTOS_HUB],
+            node_connections)
 
     def _create_token_contract(
             self, node_connections: NodeConnections,
             token_address: BlockchainAddress) \
             -> NodeConnections.Wrapper[web3.contract.Contract]:
-        return self.get_utilities().create_contract(token_address,
-                                                    ContractAbi.PANTOS_TOKEN,
-                                                    node_connections)
+        return self.get_utilities().create_contract(
+            token_address, VERSIONED_CONTRACTS_ABI[ContractAbi.PANTOS_TOKEN],
+            node_connections)
 
     def _read_transfer_to_transaction_data(
             self, transaction_id: str, read_destination_transfer_id: bool) \
@@ -545,7 +548,8 @@ class EthereumClient(BlockchainClient):
             sorted_signer_addresses: list[BlockchainAddress],
             sorted_signatures: list[str]) -> uuid.UUID:
         contract_address = self._get_config()['hub']
-        contract_abi = ContractAbi.PANTOS_HUB
+        versioned_contract_abi = VERSIONED_CONTRACTS_ABI[
+            ContractAbi.PANTOS_HUB]
         function_selector = _HUB_TRANSFER_TO_FUNCTION_SELECTOR
         function_args = (on_chain_request, sorted_signer_addresses,
                          sorted_signatures)
@@ -560,9 +564,10 @@ class EthereumClient(BlockchainClient):
         blocks_until_resubmission = \
             self._get_config()['blocks_until_resubmission']
         request = BlockchainUtilities.TransactionSubmissionStartRequest(
-            contract_address, contract_abi, function_selector, function_args,
-            gas, min_adaptable_fee_per_gas, max_total_fee_per_gas, amount,
-            nonce, adaptable_fee_increase_factor, blocks_until_resubmission)
+            contract_address, versioned_contract_abi, function_selector,
+            function_args, gas, min_adaptable_fee_per_gas,
+            max_total_fee_per_gas, amount, nonce,
+            adaptable_fee_increase_factor, blocks_until_resubmission)
         try:
             return self.get_utilities().start_transaction_submission(
                 request, node_connections)

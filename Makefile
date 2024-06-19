@@ -121,6 +121,19 @@ dist/pantos-validator-node-$(PANTOS_VERSION)-$(PANTOS_REVISION)_all.deb: linux/ 
 remote-install: dist/pantos-validator-node-$(PANTOS_VERSION)-$(PANTOS_REVISION)_all.deb
 	$(eval deb_file := pantos-validator-node-$(PANTOS_VERSION)-$(PANTOS_REVISION)_all.deb)
 	scp dist/$(deb_file) $(PANTOS_VALIDATOR_NODE_SSH_HOST):
+ifdef DEV_PANTOS_COMMON
+	scp -r $(DEV_PANTOS_COMMON) $(PANTOS_VALIDATOR_NODE_SSH_HOST):
+	ssh -t $(PANTOS_VALIDATOR_NODE_SSH_HOST) "\
+		sudo systemctl stop pantos-validator-node-celery;\
+		sudo systemctl stop pantos-validator-node-server;\
+		sudo apt install -y ./$(deb_file);\
+		sudo rm -rf /opt/pantos/validator-node/virtual-environment/lib/python3.*/site-packages/pantos/common/;\
+		sudo cp -r common/ /opt/pantos/validator-node/virtual-environment/lib/python3.*/site-packages/pantos/;\
+		sudo systemctl start pantos-validator-node-server;\
+		sudo systemctl start pantos-validator-node-celery;\
+		rm -rf common;\
+		rm $(deb_file)"
+else
 	ssh -t $(PANTOS_VALIDATOR_NODE_SSH_HOST) "\
 		sudo systemctl stop pantos-validator-node-celery;\
 		sudo systemctl stop pantos-validator-node-server;\
@@ -128,6 +141,20 @@ remote-install: dist/pantos-validator-node-$(PANTOS_VERSION)-$(PANTOS_REVISION)_
 		sudo systemctl start pantos-validator-node-server;\
 		sudo systemctl start pantos-validator-node-celery;\
 		rm $(deb_file)"
+endif
+
+.PHONY: local-common
+local-common:
+ifndef DEV_PANTOS_COMMON
+	$(error Please define DEV_PANTOS_COMMON variable)
+endif
+	$(eval CURRENT_COMMON := $(shell echo .venv/lib/python3.*/site-packages/pantos/common))
+	@if [ -d "$(CURRENT_COMMON)" ]; then \
+		rm -rf "$(CURRENT_COMMON)"; \
+		ln -s "$(DEV_PANTOS_COMMON)" "$(CURRENT_COMMON)"; \
+	else \
+		echo "Directory $(CURRENT_COMMON) does not exist"; \
+	fi
 
 .PHONY: install
 install: dist/pantos_validator_node-$(PANTOS_VERSION)-py3-none-any.whl
