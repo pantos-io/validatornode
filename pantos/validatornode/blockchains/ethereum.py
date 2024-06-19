@@ -77,6 +77,10 @@ class EthereumClient(BlockchainClient):
         # Docstring inherited
         return EthereumClientError
 
+    def get_own_address(self) -> BlockchainAddress:
+        # Docstring inherited
+        return self.__address
+
     def get_utilities(self) -> EthereumUtilities:
         # Docstring inherited
         return typing.cast(EthereumUtilities, super().get_utilities())
@@ -159,6 +163,22 @@ class EthereumClient(BlockchainClient):
                 'unable to read an external token address',
                 token_address=token_address,
                 external_blockchain=external_blockchain)
+
+    def read_minimum_validator_node_signatures(self) -> int:
+        # Docstring inherited
+        try:
+            node_connections = self.__create_node_connections()
+            forwarder_contract = self._create_forwarder_contract(
+                node_connections)
+            minimum_signatures = forwarder_contract.caller().\
+                getMinimumValidatorNodeSignatures().get()
+            assert minimum_signatures > 0
+            return minimum_signatures
+        except ResultsNotMatchingError:
+            raise
+        except Exception:
+            raise self._create_error(
+                'unable to read the minimum validator node signatures')
 
     def read_outgoing_transfers_from_block(self, from_block_number: int) -> \
             BlockchainClient.ReadOutgoingTransfersFromBlockResponse:
@@ -282,9 +302,42 @@ class EthereumClient(BlockchainClient):
                                      request=request)
         return BlockchainAddress(signer_address)
 
+    def sign_transfer_to_message(
+            self,
+            request: BlockchainClient.TransferToMessageSignRequest) -> str:
+        # Docstring inherited
+        if (request.incoming_transfer.eventual_destination_blockchain
+                != self.get_blockchain()):
+            raise self._create_error(
+                'eventual destination blockchain of incoming transfer must be '
+                f'{self.get_blockchain_name()}', request=request)
+        try:
+            assert request.destination_hub_address == self._get_config()['hub']
+            assert (request.destination_forwarder_address ==
+                    self._get_config()['forwarder'])
+            pan_token_address = self._get_config()['pan_token']
+            message = self.__create_transfer_to_message(
+                request.incoming_transfer.source_blockchain,
+                request.incoming_transfer.eventual_destination_blockchain,
+                request.incoming_transfer.source_transaction_id,
+                request.incoming_transfer.source_transfer_id,
+                request.incoming_transfer.sender_address,
+                request.incoming_transfer.eventual_recipient_address,
+                request.incoming_transfer.source_token_address,
+                request.incoming_transfer.eventual_destination_token_address,
+                request.incoming_transfer.amount, request.validator_nonce,
+                request.destination_hub_address,
+                request.destination_forwarder_address, pan_token_address)
+            signed_message = web3.Account.sign_message(
+                message, private_key=self.__private_key)
+            return signed_message.signature
+        except Exception:
+            raise self._create_error('unable to sign a transferTo message',
+                                     request=request)
+
     def start_transfer_to_submission(
             self, request: BlockchainClient.TransferToSubmissionStartRequest) \
-            -> BlockchainClient.TransferToSubmissionStartResponse:
+            -> uuid.UUID:
         # Docstring inherited
         if (request.incoming_transfer.eventual_destination_blockchain
                 != self.get_blockchain()):
@@ -294,12 +347,6 @@ class EthereumClient(BlockchainClient):
         try:
             node_connections = self.__create_node_connections()
             hub_contract = self._create_hub_contract(node_connections)
-            hub_address = self._get_config()['hub']
-            forwarder_address = self._get_config()['forwarder']
-            pan_token_address = self._get_config()['pan_token']
-            signature = self.__create_transfer_to_signature(
-                request.incoming_transfer, request.validator_nonce,
-                hub_address, forwarder_address, pan_token_address)
             on_chain_request: _OnChainTransferToRequest = (
                 request.incoming_transfer.source_blockchain.value,
                 request.incoming_transfer.source_transfer_id,
@@ -309,15 +356,18 @@ class EthereumClient(BlockchainClient):
                 request.incoming_transfer.source_token_address,
                 request.incoming_transfer.eventual_destination_token_address,
                 request.incoming_transfer.amount, request.validator_nonce)
+            sorted_signer_addresses, sorted_signatures = \
+                self.__sort_validator_node_signatures(
+                    request.validator_node_signatures)
             self.__verify_transfer_to_request(hub_contract,
                                               request.incoming_transfer,
-                                              on_chain_request, signature)
+                                              on_chain_request,
+                                              sorted_signer_addresses,
+                                              sorted_signatures)
             internal_transaction_id = self.__submit_transfer_to_request(
                 node_connections, request.internal_transfer_id,
-                on_chain_request, signature)
-            return BlockchainClient.TransferToSubmissionStartResponse(
-                internal_transaction_id, BlockchainAddress(hub_address),
-                BlockchainAddress(forwarder_address))
+                on_chain_request, sorted_signer_addresses, sorted_signatures)
+            return internal_transaction_id
         except ResultsNotMatchingError:
             raise
         except EthereumClientError:
@@ -450,26 +500,6 @@ class EthereumClient(BlockchainClient):
         ])
         return eth_account.messages.encode_defunct(base_message)
 
-    def __create_transfer_to_signature(self,
-                                       incoming_transfer: CrossChainTransfer,
-                                       validator_nonce: int, hub_address: str,
-                                       forwarder_address: str,
-                                       pan_token_address: str) -> str:
-        message = self.__create_transfer_to_message(
-            incoming_transfer.source_blockchain,
-            incoming_transfer.eventual_destination_blockchain,
-            incoming_transfer.source_transaction_id,
-            incoming_transfer.source_transfer_id,
-            incoming_transfer.sender_address,
-            incoming_transfer.eventual_recipient_address,
-            incoming_transfer.source_token_address,
-            incoming_transfer.eventual_destination_token_address,
-            incoming_transfer.amount, validator_nonce, hub_address,
-            forwarder_address, pan_token_address)
-        signed_message = web3.Account.sign_message(
-            message, private_key=self.__private_key)
-        return signed_message.signature
-
     def __create_node_connections(self) -> NodeConnections:
         provider_timeout = self._get_config()['provider_timeout']
         return self.get_utilities().create_node_connections(provider_timeout)
@@ -500,15 +530,29 @@ class EthereumClient(BlockchainClient):
         assert nonce is not None
         return nonce
 
+    def __sort_validator_node_signatures(
+            self, validator_node_signatures: dict[BlockchainAddress, str]) \
+            -> tuple[list[BlockchainAddress], list[str]]:
+        sorted_signer_addresses = sorted(
+            validator_node_signatures,
+            key=lambda signer_address: int(signer_address, 16))
+        sorted_signatures = [
+            validator_node_signatures[signer_address]
+            for signer_address in sorted_signer_addresses
+        ]
+        return sorted_signer_addresses, sorted_signatures
+
     def __submit_transfer_to_request(
             self, node_connections: NodeConnections, internal_transfer_id: int,
             on_chain_request: _OnChainTransferToRequest,
-            signature: str) -> uuid.UUID:
+            sorted_signer_addresses: list[BlockchainAddress],
+            sorted_signatures: list[str]) -> uuid.UUID:
         contract_address = self._get_config()['hub']
         versioned_contract_abi = VERSIONED_CONTRACTS_ABI[
             ContractAbi.PANTOS_HUB]
         function_selector = _HUB_TRANSFER_TO_FUNCTION_SELECTOR
-        function_args = (on_chain_request, [self.__address], [signature])
+        function_args = (on_chain_request, sorted_signer_addresses,
+                         sorted_signatures)
         gas = _HUB_TRANSFER_TO_GAS
         min_adaptable_fee_per_gas = \
             self._get_config()['min_adaptable_fee_per_gas']
@@ -536,11 +580,12 @@ class EthereumClient(BlockchainClient):
             hub_contract: NodeConnections.Wrapper[web3.contract.Contract],
             incoming_transfer: CrossChainTransfer,
             on_chain_request: _OnChainTransferToRequest,
-            signature: str) -> None:
+            sorted_signer_addresses: list[BlockchainAddress],
+            sorted_signatures: list[str]) -> None:
         try:
-            hub_contract.functions.verifyTransferTo(on_chain_request,
-                                                    [self.__address],
-                                                    [signature]).call().get()
+            hub_contract.functions.verifyTransferTo(
+                on_chain_request, sorted_signer_addresses,
+                sorted_signatures).call().get()
         except web3.exceptions.ContractLogicError as error:
             if _NON_MATCHING_FORWARDER_ERROR in str(error):
                 raise self._create_non_matching_forwarder_error(

@@ -2,6 +2,7 @@
 
 """
 import typing
+import uuid
 
 from pantos.common.blockchains.enums import Blockchain
 from pantos.common.types import BlockchainAddress
@@ -32,6 +33,10 @@ class SolanaClient(BlockchainClient):
         # Docstring inherited
         return SolanaClientError
 
+    def get_own_address(self) -> BlockchainAddress:
+        # Docstring inherited
+        raise NotImplementedError  # pragma: no cover
+
     def is_token_active(self, token_address: BlockchainAddress) -> bool:
         # Docstring inherited
         raise NotImplementedError  # pragma: no cover
@@ -56,6 +61,10 @@ class SolanaClient(BlockchainClient):
             self, token_address: BlockchainAddress,
             external_blockchain: Blockchain) -> \
             typing.Optional[BlockchainAddress]:
+        # Docstring inherited
+        raise NotImplementedError  # pragma: no cover
+
+    def read_minimum_validator_node_signatures(self) -> int:
         # Docstring inherited
         raise NotImplementedError  # pragma: no cover
 
@@ -85,9 +94,15 @@ class SolanaClient(BlockchainClient):
         # Docstring inherited
         raise NotImplementedError  # pragma: no cover
 
+    def sign_transfer_to_message(
+            self,
+            request: BlockchainClient.TransferToMessageSignRequest) -> str:
+        # Docstring inherited
+        raise NotImplementedError  # pragma: no cover
+
     def start_transfer_to_submission(
             self, request: BlockchainClient.TransferToSubmissionStartRequest) \
-            -> BlockchainClient.TransferToSubmissionStartResponse:
+            -> uuid.UUID:
         # Docstring inherited
         raise NotImplementedError  # pragma: no cover
 
