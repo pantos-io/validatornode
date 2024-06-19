@@ -7,12 +7,14 @@ import uuid
 import eth_account.messages
 import hexbytes
 import pytest
+import semantic_version  # type: ignore
 import web3
 import web3.exceptions
 from pantos.common.blockchains.base import NodeConnections
 from pantos.common.blockchains.base import ResultsNotMatchingError
 from pantos.common.blockchains.base import TransactionNonceTooLowError
 from pantos.common.blockchains.base import TransactionUnderpricedError
+from pantos.common.blockchains.base import VersionedContractAbi
 from pantos.common.blockchains.enums import Blockchain
 from pantos.common.blockchains.enums import ContractAbi
 from pantos.common.types import BlockchainAddress
@@ -959,9 +961,11 @@ def test_start_transfer_to_submission_correct(mock_get_config,
     mock_contract_caller = unittest.mock.MagicMock()
     mock_contract_caller.isValidValidatorNodeNonce().get.return_value = True
     mock_hub_contract.caller.return_value = mock_contract_caller
+    versioned_hub_contract_abi = VersionedContractAbi(
+        ContractAbi.PANTOS_HUB, semantic_version.Version('1.0.0'))
     mock_hub_contract.events = \
         ethereum_client.get_utilities().create_contract(
-            mock_config['hub'], ContractAbi.PANTOS_HUB,
+            mock_config['hub'], versioned_hub_contract_abi,
             node_connections).events
     mock_create_hub_contract.return_value = mock_hub_contract
     mock_start_transaction_submission = unittest.mock.MagicMock()

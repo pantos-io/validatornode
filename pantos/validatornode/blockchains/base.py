@@ -7,10 +7,13 @@ import logging
 import typing
 import uuid
 
+import semantic_version  # type: ignore
 from pantos.common.blockchains.base import BlockchainHandler
 from pantos.common.blockchains.base import BlockchainUtilities
 from pantos.common.blockchains.base import BlockchainUtilitiesError
+from pantos.common.blockchains.base import VersionedContractAbi
 from pantos.common.blockchains.enums import Blockchain
+from pantos.common.blockchains.enums import ContractAbi
 from pantos.common.blockchains.factory import get_blockchain_utilities
 from pantos.common.blockchains.factory import initialize_blockchain_utilities
 from pantos.common.entities import TransactionStatus
@@ -22,6 +25,13 @@ from pantos.validatornode.entities import CrossChainTransfer
 from pantos.validatornode.exceptions import ValidatorNodeError
 
 _logger = logging.getLogger(__name__)
+
+_CONTRACTS_VERSION = semantic_version.Version('1.0.0')
+
+VERSIONED_CONTRACTS_ABI = {
+    abi_contract: VersionedContractAbi(abi_contract, _CONTRACTS_VERSION)
+    for abi_contract in ContractAbi
+}
 
 
 class BlockchainClientError(ValidatorNodeError):
