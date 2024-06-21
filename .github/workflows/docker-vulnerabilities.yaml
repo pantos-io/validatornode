@@ -6,9 +6,6 @@ on:
   schedule:
     # At the end of every day
     - cron: "0 0 * * *"
-  # Added to check if the workload works as expected
-  pull_request:
-
        
 jobs:
     docker-analysis:
