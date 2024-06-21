@@ -34,9 +34,9 @@ jobs:
               uses: actions/cache@v3
               with:
                 path: /tmp/.buildx-cache
-                key: ${{ runner.os }}-buildx-v1.0-validator-${{ github.sha }}
+                key: ${{ runner.os }}-buildx-v1.0-validator-node-${{ github.sha }}
                 restore-keys: |
-                    ${{ runner.os }}-buildx-v1.0-validator-
+                    ${{ runner.os }}-buildx-v1.0-validator-node-
 
             - name: Build and load
               run: |
@@ -47,24 +47,39 @@ jobs:
                     --builder ${{ steps.buildx.outputs.name }} \
                     -f docker-compose.yml \
                     --load \
-                    validator
+                    app worker
               env:
                 DOCKER_TAG: analysis-latest
         
-            - name: Scan vulnerabilities validator image
+            - name: Scan vulnerabilities validator app image
               uses: aquasecurity/trivy-action@0.20.0
               with:           
-                image-ref: 'pantosio/validator:analysis-latest'
+                image-ref: 'pantosio/app:analysis-latest'
                 format: 'sarif'
-                output: 'trivy-validator-results.sarif'
+                output: 'trivy-validator-app-results.sarif'
                 severity: 'CRITICAL,HIGH'
             
             - name: Upload Trivy scan results for app to GitHub Security tab
               uses: github/codeql-action/upload-sarif@v3
               if: always()
               with:
-                category: 'validator'
-                sarif_file: 'trivy-validator-results.sarif'
+                category: 'validator-app'
+                sarif_file: 'trivy-validator-app-results.sarif'
+            
+            - name: Scan vulnerabilities validator worker image
+              uses: aquasecurity/trivy-action@0.20.0
+              with:           
+                image-ref: 'pantosio/worker:analysis-latest'
+                format: 'sarif'
+                output: 'trivy-validator-worker-results.sarif'
+                severity: 'CRITICAL,HIGH'
+              
+            - name: Upload Trivy scan results for app to GitHub Security tab
+              uses: github/codeql-action/upload-sarif@v3
+              if: always()
+              with:
+                category: 'validator-worker'
+                sarif_file: 'trivy-validator-worker-results.sarif'
 
             - name: Move cache
               if: always()
