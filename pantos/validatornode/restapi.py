@@ -1,4 +1,4 @@
-"""Module that implements the Validator Node's REST API.
+"""Module that implements the primary validator node's REST API.
 
 """
 import logging
