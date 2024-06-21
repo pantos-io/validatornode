@@ -214,10 +214,12 @@ class PrimaryNodeClient:
                     and response_message is not None
                     and 'Invalid signature.' in response_message):
                 raise PrimaryNodeInvalidSignatureError(**extra_info)
+            if response.status_code == requests.codes.conflict:
+                assert response_message is not None
+                assert 'Duplicate signature.' in response_message
+                raise PrimaryNodeDuplicateSignatureError(**extra_info)
             if response.status_code == requests.codes.forbidden:
                 assert response_message is not None
-                if 'Duplicate signature.' in response_message:
-                    raise PrimaryNodeDuplicateSignatureError(**extra_info)
                 assert 'Invalid signer.' in response_message
                 raise PrimaryNodeInvalidSignerError(**extra_info)
             if response.status_code == requests.codes.not_found:

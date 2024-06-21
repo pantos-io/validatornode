@@ -112,7 +112,7 @@ def test_transfer_signature_bad_request_signature_error(
 @unittest.mock.patch('pantos.validatornode.restapi.get_blockchain_client')
 @unittest.mock.patch('pantos.validatornode.restapi.get_blockchain_config',
                      return_value={'active': True})
-def test_transfer_signature_forbidden_signature_error(
+def test_transfer_signature_conflict_signature_error(
         mock_get_blockchain_config, mock_get_blockchain_client,
         mock_signature_interactor, transfer_signature_request, test_client):
     mock_get_blockchain_client().is_valid_transaction_id.return_value = True
@@ -122,7 +122,7 @@ def test_transfer_signature_forbidden_signature_error(
     response = test_client.post(_RESTFUL_RESOURCE,
                                 json=transfer_signature_request)
 
-    assert response.status_code == 403
+    assert response.status_code == 409
     assert json.loads(response.text)['message'] == 'Duplicate signature.'
 
 

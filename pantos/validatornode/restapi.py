@@ -11,6 +11,7 @@ import marshmallow.fields
 from pantos.common.blockchains.enums import Blockchain
 from pantos.common.restapi import Live
 from pantos.common.restapi import bad_request
+from pantos.common.restapi import conflict
 from pantos.common.restapi import forbidden
 from pantos.common.restapi import internal_server_error
 from pantos.common.restapi import no_content_response
@@ -124,7 +125,7 @@ class _TransferSignature(flask_restful.Resource):
         except marshmallow.ValidationError as error:
             bad_request(error.messages)
         except DuplicateSignatureError:
-            forbidden('Duplicate signature.')
+            conflict('Duplicate signature.')
         except InvalidSignatureError:
             bad_request('Invalid signature.')
         except InvalidSignerError:
