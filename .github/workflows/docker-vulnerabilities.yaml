@@ -54,7 +54,7 @@ jobs:
             - name: Scan vulnerabilities validator app image
               uses: aquasecurity/trivy-action@0.20.0
               with:           
-                image-ref: 'pantosio/app:analysis-latest'
+                image-ref: 'pantosio/validator-node-app:analysis-latest'
                 format: 'sarif'
                 output: 'trivy-validator-app-results.sarif'
                 severity: 'CRITICAL,HIGH'
@@ -69,7 +69,7 @@ jobs:
             - name: Scan vulnerabilities validator worker image
               uses: aquasecurity/trivy-action@0.20.0
               with:           
-                image-ref: 'pantosio/worker:analysis-latest'
+                image-ref: 'pantosio/validator-node-worker:analysis-latest'
                 format: 'sarif'
                 output: 'trivy-validator-worker-results.sarif'
                 severity: 'CRITICAL,HIGH'
