@@ -16,8 +16,8 @@ from pantos.validatornode.database.enums import TransferStatus
 @pytest.mark.parametrize('recipient_address_valid', [True, False])
 @pytest.mark.parametrize('in_other_source_transaction', [True, False])
 @pytest.mark.parametrize('is_primary_node', [True, False])
-@unittest.mock.patch(
-    'pantos.validatornode.business.transfers.submit_transfer_offchain_task')
+@unittest.mock.patch('pantos.validatornode.business.transfers.'
+                     'submit_transfer_to_primary_node_task')
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.submit_transfer_onchain_task')
 @unittest.mock.patch('pantos.validatornode.business.transfers.database_access')
@@ -26,8 +26,9 @@ from pantos.validatornode.database.enums import TransferStatus
 @unittest.mock.patch('pantos.validatornode.business.base.config')
 def test_validate_transfer_confirmed_correct(
         mock_config, mock_get_blockchain_client, mock_database_access,
-        mock_submit_transfer_onchain_task, mock_submit_transfer_offchain_task,
-        is_primary_node, in_other_source_transaction, recipient_address_valid,
+        mock_submit_transfer_onchain_task,
+        mock_submit_transfer_to_primary_node_task, is_primary_node,
+        in_other_source_transaction, recipient_address_valid,
         destination_token_active, external_token_address_correct,
         token_decimals_correct, transfer_interactor, internal_transfer_id,
         cross_chain_transfer):
@@ -69,15 +70,16 @@ def test_validate_transfer_confirmed_correct(
     if is_primary_node:
         mock_submit_transfer_onchain_task.delay.assert_called_once_with(
             internal_transfer_id, transfer_in_source_transaction.to_dict())
-        mock_submit_transfer_offchain_task.delay.assert_not_called()
+        mock_submit_transfer_to_primary_node_task.delay.assert_not_called()
     else:
         mock_submit_transfer_onchain_task.delay.assert_not_called()
-        mock_submit_transfer_offchain_task.delay.assert_called_once_with(
-            internal_transfer_id, transfer_in_source_transaction.to_dict())
+        mock_submit_transfer_to_primary_node_task.delay.\
+            assert_called_once_with(internal_transfer_id,
+                                    transfer_in_source_transaction.to_dict())
 
 
-@unittest.mock.patch(
-    'pantos.validatornode.business.transfers.submit_transfer_offchain_task')
+@unittest.mock.patch('pantos.validatornode.business.transfers.'
+                     'submit_transfer_to_primary_node_task')
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.submit_transfer_onchain_task')
 @unittest.mock.patch('pantos.validatornode.business.transfers.database_access')
@@ -85,8 +87,9 @@ def test_validate_transfer_confirmed_correct(
     'pantos.validatornode.business.transfers.get_blockchain_client')
 def test_validate_transfer_unconfirmed_correct(
         mock_get_blockchain_client, mock_database_access,
-        mock_submit_transfer_onchain_task, mock_submit_transfer_offchain_task,
-        transfer_interactor, internal_transfer_id, cross_chain_transfer):
+        mock_submit_transfer_onchain_task,
+        mock_submit_transfer_to_primary_node_task, transfer_interactor,
+        internal_transfer_id, cross_chain_transfer):
     _initialize_mock_blockchain_client(mock_get_blockchain_client,
                                        TransactionStatus.UNCONFIRMED,
                                        cross_chain_transfer, True, True, True,
@@ -99,11 +102,11 @@ def test_validate_transfer_unconfirmed_correct(
     mock_database_access.update_reversal_transfer.assert_not_called()
     mock_database_access.update_transfer_status.assert_not_called()
     mock_submit_transfer_onchain_task.delay.assert_not_called()
-    mock_submit_transfer_offchain_task.delay.assert_not_called()
+    mock_submit_transfer_to_primary_node_task.delay.assert_not_called()
 
 
-@unittest.mock.patch(
-    'pantos.validatornode.business.transfers.submit_transfer_offchain_task')
+@unittest.mock.patch('pantos.validatornode.business.transfers.'
+                     'submit_transfer_to_primary_node_task')
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.submit_transfer_onchain_task')
 @unittest.mock.patch('pantos.validatornode.business.transfers.database_access')
@@ -111,8 +114,9 @@ def test_validate_transfer_unconfirmed_correct(
     'pantos.validatornode.business.transfers.get_blockchain_client')
 def test_validate_transfer_reverted_correct(
         mock_get_blockchain_client, mock_database_access,
-        mock_submit_transfer_onchain_task, mock_submit_transfer_offchain_task,
-        transfer_interactor, internal_transfer_id, cross_chain_transfer):
+        mock_submit_transfer_onchain_task,
+        mock_submit_transfer_to_primary_node_task, transfer_interactor,
+        internal_transfer_id, cross_chain_transfer):
     _initialize_mock_blockchain_client(mock_get_blockchain_client,
                                        TransactionStatus.REVERTED,
                                        cross_chain_transfer, True, True, True,
@@ -126,11 +130,11 @@ def test_validate_transfer_reverted_correct(
     mock_database_access.update_transfer_status.assert_called_once_with(
         internal_transfer_id, TransferStatus.SOURCE_TRANSACTION_REVERTED)
     mock_submit_transfer_onchain_task.delay.assert_not_called()
-    mock_submit_transfer_offchain_task.delay.assert_not_called()
+    mock_submit_transfer_to_primary_node_task.delay.assert_not_called()
 
 
-@unittest.mock.patch(
-    'pantos.validatornode.business.transfers.submit_transfer_offchain_task')
+@unittest.mock.patch('pantos.validatornode.business.transfers.'
+                     'submit_transfer_to_primary_node_task')
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.submit_transfer_onchain_task')
 @unittest.mock.patch('pantos.validatornode.business.transfers.database_access')
@@ -138,8 +142,9 @@ def test_validate_transfer_reverted_correct(
     'pantos.validatornode.business.transfers.get_blockchain_client')
 def test_validate_transfer_invalid_correct(
         mock_get_blockchain_client, mock_database_access,
-        mock_submit_transfer_onchain_task, mock_submit_transfer_offchain_task,
-        transfer_interactor, internal_transfer_id, cross_chain_transfer):
+        mock_submit_transfer_onchain_task,
+        mock_submit_transfer_to_primary_node_task, transfer_interactor,
+        internal_transfer_id, cross_chain_transfer):
     _initialize_mock_blockchain_client(mock_get_blockchain_client,
                                        TransactionStatus.CONFIRMED,
                                        cross_chain_transfer, True, False, True,
@@ -153,11 +158,11 @@ def test_validate_transfer_invalid_correct(
     mock_database_access.update_transfer_status.assert_called_once_with(
         internal_transfer_id, TransferStatus.SOURCE_TRANSACTION_INVALID)
     mock_submit_transfer_onchain_task.delay.assert_not_called()
-    mock_submit_transfer_offchain_task.delay.assert_not_called()
+    mock_submit_transfer_to_primary_node_task.delay.assert_not_called()
 
 
-@unittest.mock.patch(
-    'pantos.validatornode.business.transfers.submit_transfer_offchain_task')
+@unittest.mock.patch('pantos.validatornode.business.transfers.'
+                     'submit_transfer_to_primary_node_task')
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.submit_transfer_onchain_task')
 @unittest.mock.patch('pantos.validatornode.business.transfers.database_access')
@@ -165,8 +170,9 @@ def test_validate_transfer_invalid_correct(
     'pantos.validatornode.business.transfers.get_blockchain_client')
 def test_validate_transfer_not_found_in_transaction_error(
         mock_get_blockchain_client, mock_database_access,
-        mock_submit_transfer_onchain_task, mock_submit_transfer_offchain_task,
-        transfer_interactor, internal_transfer_id, cross_chain_transfer):
+        mock_submit_transfer_onchain_task,
+        mock_submit_transfer_to_primary_node_task, transfer_interactor,
+        internal_transfer_id, cross_chain_transfer):
     _initialize_mock_blockchain_client(mock_get_blockchain_client,
                                        TransactionStatus.CONFIRMED, None, True,
                                        True, True, True, True)
@@ -181,11 +187,11 @@ def test_validate_transfer_not_found_in_transaction_error(
     mock_database_access.update_reversal_transfer.assert_not_called()
     mock_database_access.update_transfer_status.assert_not_called()
     mock_submit_transfer_onchain_task.delay.assert_not_called()
-    mock_submit_transfer_offchain_task.delay.assert_not_called()
+    mock_submit_transfer_to_primary_node_task.delay.assert_not_called()
 
 
-@unittest.mock.patch(
-    'pantos.validatornode.business.transfers.submit_transfer_offchain_task')
+@unittest.mock.patch('pantos.validatornode.business.transfers.'
+                     'submit_transfer_to_primary_node_task')
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.submit_transfer_onchain_task')
 @unittest.mock.patch('pantos.validatornode.business.transfers.database_access')
@@ -193,8 +199,9 @@ def test_validate_transfer_not_found_in_transaction_error(
     'pantos.validatornode.business.transfers.get_blockchain_client')
 def test_validate_transfer_other_error(
         mock_get_blockchain_client, mock_database_access,
-        mock_submit_transfer_onchain_task, mock_submit_transfer_offchain_task,
-        transfer_interactor, internal_transfer_id, cross_chain_transfer):
+        mock_submit_transfer_onchain_task,
+        mock_submit_transfer_to_primary_node_task, transfer_interactor,
+        internal_transfer_id, cross_chain_transfer):
     mock_get_blockchain_client.side_effect = Exception
 
     with pytest.raises(TransferInteractorError) as exception_info:
@@ -207,7 +214,7 @@ def test_validate_transfer_other_error(
     mock_database_access.update_reversal_transfer.assert_not_called()
     mock_database_access.update_transfer_status.assert_not_called()
     mock_submit_transfer_onchain_task.delay.assert_not_called()
-    mock_submit_transfer_offchain_task.delay.assert_not_called()
+    mock_submit_transfer_to_primary_node_task.delay.assert_not_called()
 
 
 @pytest.mark.parametrize('validation_completed', [True, False])

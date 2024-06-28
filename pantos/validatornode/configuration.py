@@ -275,8 +275,8 @@ _VALIDATION_SCHEMA = {
         'required': True,
         'schema': {
             'confirm_transfer': _VALIDATION_SCHEMA_TASK,
-            'submit_transfer_offchain': _VALIDATION_SCHEMA_TASK,
             'submit_transfer_onchain': _VALIDATION_SCHEMA_TASK,
+            'submit_transfer_to_primary_node': _VALIDATION_SCHEMA_TASK,
             'validate_transfer': _VALIDATION_SCHEMA_TASK
         }
     },

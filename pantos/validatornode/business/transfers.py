@@ -262,8 +262,8 @@ class TransferInteractor(Interactor):
                 source_blockchain=source_blockchain,
                 source_transaction_id=source_transaction_id)
 
-    def submit_transfer_offchain(self, internal_transfer_id: int,
-                                 transfer: CrossChainTransfer) -> bool:
+    def submit_transfer_to_primary_node(self, internal_transfer_id: int,
+                                        transfer: CrossChainTransfer) -> bool:
         """Submit the signature for a cross-chain token transfer after
         its successful validation to the primary validator node.
 
@@ -436,8 +436,8 @@ class TransferInteractor(Interactor):
                 submit_transfer_onchain_task.delay(internal_transfer_id,
                                                    transfer.to_dict())
             else:
-                submit_transfer_offchain_task.delay(internal_transfer_id,
-                                                    transfer.to_dict())
+                submit_transfer_to_primary_node_task.delay(
+                    internal_transfer_id, transfer.to_dict())
             return True
         except TransferInteractor.__TransferValidationError as error:
             return error.is_permanent()
@@ -795,7 +795,7 @@ def confirm_transfer_task(self, internal_transfer_id: int,
 
 
 @celery_app.task(bind=True, max_retries=None)
-def submit_transfer_offchain_task(
+def submit_transfer_to_primary_node_task(
         self, internal_transfer_id: int,
         transfer_dict: CrossChainTransferDict) -> bool:
     """Celery task for submitting the signature for a cross-chain token
@@ -817,8 +817,9 @@ def submit_transfer_offchain_task(
     """
     transfer = CrossChainTransfer.from_dict(transfer_dict)
     try:
-        submission_completed = TransferInteractor().submit_transfer_offchain(
-            internal_transfer_id, transfer)
+        submission_completed = \
+            TransferInteractor().submit_transfer_to_primary_node(
+                internal_transfer_id, transfer)
     except Exception as error:
         _logger.error(
             'unable to submit the signature for a token transfer to the '
@@ -826,11 +827,11 @@ def submit_transfer_offchain_task(
                 'internal_transfer_id': internal_transfer_id,
                 'task_id': self.request.id
             }, exc_info=True)
-        retry_interval = config['tasks']['submit_transfer_offchain'][
+        retry_interval = config['tasks']['submit_transfer_to_primary_node'][
             'retry_interval_after_error_in_seconds']
         raise self.retry(countdown=retry_interval, exc=error)
     if not submission_completed:
-        retry_interval = config['tasks']['submit_transfer_offchain'][
+        retry_interval = config['tasks']['submit_transfer_to_primary_node'][
             'retry_interval_in_seconds']
         raise self.retry(countdown=retry_interval)
     return True
