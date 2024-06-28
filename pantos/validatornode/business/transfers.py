@@ -182,6 +182,9 @@ class TransferInteractor(Interactor):
                 if internal_transfer_id is None:
                     _logger.info('new token transfer',
                                  extra=vars(found_transfer))
+                    # Secondary nodes also assign a validator nonce
+                    # since they are supposed to be able to assume the
+                    # primary role anytime after reconfiguration
                     validator_nonce = self.__find_unused_validator_nonce(
                         found_transfer.destination_blockchain)
                     transfer_creation_request = TransferCreationRequest(
@@ -258,6 +261,33 @@ class TransferInteractor(Interactor):
                 'unable to get a validator nonce',
                 source_blockchain=source_blockchain,
                 source_transaction_id=source_transaction_id)
+
+    def submit_transfer_offchain(self, internal_transfer_id: int,
+                                 transfer: CrossChainTransfer) -> bool:
+        """Submit the signature for a cross-chain token transfer after
+        its successful validation to the primary validator node.
+
+        Parameters
+        ----------
+        internal_transfer_id : int
+            The unique internal ID of the transfer.
+        transfer : CrossChainTransfer
+            The data of the cross-chain token transfer to submit.
+
+        Returns
+        -------
+        bool
+            True if the submission is completed for the transfer.
+
+        Raises
+        ------
+        TransferInteractorError
+            If an error occurs during submitting the signature for a
+            cross-chain token transfer.
+
+        """
+        assert not self._is_primary_node()  # pragma: no cover
+        raise NotImplementedError  # pragma: no cover
 
     def submit_transfer_onchain(self, internal_transfer_id: int,
                                 transfer: CrossChainTransfer) -> bool:
@@ -406,7 +436,8 @@ class TransferInteractor(Interactor):
                 submit_transfer_onchain_task.delay(internal_transfer_id,
                                                    transfer.to_dict())
             else:
-                raise NotImplementedError  # pragma: no cover
+                submit_transfer_offchain_task.delay(internal_transfer_id,
+                                                    transfer.to_dict())
             return True
         except TransferInteractor.__TransferValidationError as error:
             return error.is_permanent()
@@ -758,6 +789,48 @@ def confirm_transfer_task(self, internal_transfer_id: int,
         raise self.retry(countdown=retry_interval, exc=error)
     if not confirmation_completed:
         retry_interval = config['tasks']['confirm_transfer'][
+            'retry_interval_in_seconds']
+        raise self.retry(countdown=retry_interval)
+    return True
+
+
+@celery_app.task(bind=True, max_retries=None)
+def submit_transfer_offchain_task(
+        self, internal_transfer_id: int,
+        transfer_dict: CrossChainTransferDict) -> bool:
+    """Celery task for submitting the signature for a cross-chain token
+    transfer after its successful validation to the primary validator
+    node.
+
+    Parameters
+    ----------
+    internal_transfer_id : int
+        The unique internal ID of the transfer.
+    transfer_dict : CrossChainTransferDict
+        The data of the cross-chain token transfer to submit.
+
+    Returns
+    -------
+    bool
+        True if the task is executed without error.
+
+    """
+    transfer = CrossChainTransfer.from_dict(transfer_dict)
+    try:
+        submission_completed = TransferInteractor().submit_transfer_offchain(
+            internal_transfer_id, transfer)
+    except Exception as error:
+        _logger.error(
+            'unable to submit the signature for a token transfer to the '
+            'primary validator node', extra=vars(transfer) | {
+                'internal_transfer_id': internal_transfer_id,
+                'task_id': self.request.id
+            }, exc_info=True)
+        retry_interval = config['tasks']['submit_transfer_offchain'][
+            'retry_interval_after_error_in_seconds']
+        raise self.retry(countdown=retry_interval, exc=error)
+    if not submission_completed:
+        retry_interval = config['tasks']['submit_transfer_offchain'][
             'retry_interval_in_seconds']
         raise self.retry(countdown=retry_interval)
     return True

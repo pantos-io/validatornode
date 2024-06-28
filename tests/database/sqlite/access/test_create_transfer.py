@@ -127,5 +127,6 @@ def _check_created_transfer(created_transfer, input_transfer,
             TransferStatus.SOURCE_TRANSACTION_DETECTED.value)
     assert (created_transfer.status.name ==
             TransferStatus.SOURCE_TRANSACTION_DETECTED.name)
-    assert created_transfer.created < datetime.datetime.utcnow()
+    assert created_transfer.created < datetime.datetime.now(
+        datetime.timezone.utc).replace(tzinfo=None)
     assert created_transfer.updated is None

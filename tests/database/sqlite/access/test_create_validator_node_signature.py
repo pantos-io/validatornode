@@ -36,4 +36,5 @@ def test_create_validator_node_signature_correct(
     if validator_node_existent:
         assert validator_node_signature.validator_node_id == validator_node.id
     assert validator_node_signature.signature == signature
-    assert validator_node_signature.created < datetime.datetime.utcnow()
+    assert validator_node_signature.created < datetime.datetime.now(
+        datetime.timezone.utc).replace(tzinfo=None)

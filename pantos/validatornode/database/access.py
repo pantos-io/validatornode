@@ -536,7 +536,7 @@ def update_reversal_transfer(
                 destination_blockchain_id=destination_blockchain.value,
                 recipient_address=recipient_address,
                 destination_token_contract_id=destination_token_contract_id,
-                updated=datetime.datetime.utcnow())
+                updated=datetime.datetime.now(datetime.timezone.utc))
         session.execute(statement)
 
 
@@ -564,7 +564,7 @@ def update_transfer_confirmed_destination_transaction(
             destination_transfer_id=destination_transfer_id,
             destination_transaction_id=destination_transaction_id,
             destination_block_number=destination_block_number,
-            updated=datetime.datetime.utcnow())
+            updated=datetime.datetime.now(datetime.timezone.utc))
     with get_session_maker().begin() as session:
         session.execute(statement)
 
@@ -608,7 +608,7 @@ def update_transfer_submitted_destination_transaction(
                 destination_hub_contract_id=destination_hub_contract_id,
                 destination_forwarder_contract_id=  # noqa: E251
                 destination_forwarder_contract_id,
-                updated=datetime.datetime.utcnow())
+                updated=datetime.datetime.now(datetime.timezone.utc))
         session.execute(update_statement)
 
 
@@ -730,8 +730,8 @@ def update_transfer_source_transaction(internal_transfer_id: int,
                                                   source_transfer_id)
         transfer.source_block_number = typing.cast(sqlalchemy.Column,
                                                    source_block_number)
-        transfer.updated = typing.cast(sqlalchemy.Column,
-                                       datetime.datetime.utcnow())
+        transfer.updated = typing.cast(
+            sqlalchemy.Column, datetime.datetime.now(datetime.timezone.utc))
 
 
 def update_transfer_status(internal_transfer_id: int,
@@ -750,8 +750,8 @@ def update_transfer_status(internal_transfer_id: int,
         transfer = session.get(Transfer, internal_transfer_id)
         assert transfer is not None
         transfer.status_id = typing.cast(sqlalchemy.Column, status.value)
-        transfer.updated = typing.cast(sqlalchemy.Column,
-                                       datetime.datetime.utcnow())
+        transfer.updated = typing.cast(
+            sqlalchemy.Column, datetime.datetime.now(datetime.timezone.utc))
 
 
 def update_transfer_task_id(internal_transfer_id: int,
@@ -770,8 +770,28 @@ def update_transfer_task_id(internal_transfer_id: int,
         transfer = session.get(Transfer, internal_transfer_id)
         assert transfer is not None
         transfer.task_id = typing.cast(sqlalchemy.Column, str(task_id))
-        transfer.updated = typing.cast(sqlalchemy.Column,
-                                       datetime.datetime.utcnow())
+        transfer.updated = typing.cast(
+            sqlalchemy.Column, datetime.datetime.now(datetime.timezone.utc))
+
+
+def update_transfer_validator_nonce(internal_transfer_id: int,
+                                    validator_nonce: int) -> None:
+    """Update a transfer's validator nonce.
+
+    Parameters
+    ----------
+    internal_transfer_id : int
+        The unique internal ID of the transfer.
+    validator_nonce : int
+        The new validator nonce assigned to the transfer.
+
+    """
+    statement = sqlalchemy.update(Transfer).where(
+        Transfer.id == internal_transfer_id).values(
+            validator_nonce=validator_nonce,
+            updated=datetime.datetime.now(datetime.timezone.utc))
+    with get_session_maker().begin() as session:
+        session.execute(statement)
 
 
 def _read_id(session: sqlalchemy.orm.Session, model: typing.Type[B],
