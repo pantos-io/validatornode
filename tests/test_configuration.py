@@ -59,10 +59,10 @@ tasks:
     confirm_transfer:
         retry_interval_in_seconds: 60
         retry_interval_after_error_in_seconds: 300
-    submit_transfer_offchain:
+    submit_transfer_onchain:
         retry_interval_in_seconds: 60
         retry_interval_after_error_in_seconds: 300
-    submit_transfer_onchain:
+    submit_transfer_to_primary_node:
         retry_interval_in_seconds: 60
         retry_interval_after_error_in_seconds: 300
     validate_transfer:

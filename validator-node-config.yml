@@ -43,12 +43,12 @@ tasks:
     confirm_transfer:
         retry_interval_in_seconds: !ENV tag:yaml.org,2002:int ${TASKS_CONFIRM_TRANSFER_RETRY_INTERVAL:60}
         retry_interval_after_error_in_seconds: !ENV tag:yaml.org,2002:int ${TASKS_CONFIRM_TRANSFER_RETRY_INTERVAL_AFTER_ERROR:300}
-    submit_transfer_offchain:
-        retry_interval_in_seconds: !ENV tag:yaml.org,2002:int ${TASKS_SUBMIT_TRANSFER_OFFCHAIN_RETRY_INTERVAL:60}
-        retry_interval_after_error_in_seconds: !ENV tag:yaml.org,2002:int ${TASKS_SUBMIT_TRANSFER_OFFCHAIN_RETRY_INTERVAL_AFTER_ERROR:300}
     submit_transfer_onchain:
         retry_interval_in_seconds: !ENV tag:yaml.org,2002:int ${TASKS_SUBMIT_TRANSFER_ONCHAIN_RETRY_INTERVAL:60}
         retry_interval_after_error_in_seconds: !ENV tag:yaml.org,2002:int ${TASKS_SUBMIT_TRANSFER_ONCHAIN_RETRY_INTERVAL_AFTER_ERROR:300}
+    submit_transfer_to_primary_node:
+        retry_interval_in_seconds: !ENV tag:yaml.org,2002:int ${TASKS_SUBMIT_TRANSFER_TO_PRIMARY_NODE_RETRY_INTERVAL:60}
+        retry_interval_after_error_in_seconds: !ENV tag:yaml.org,2002:int ${TASKS_SUBMIT_TRANSFER_TO_PRIMARY_NODE_RETRY_INTERVAL_AFTER_ERROR:300}
     validate_transfer:
         retry_interval_in_seconds: !ENV tag:yaml.org,2002:int ${TASKS_VALIDATE_TRANSFER_RETRY_INTERVAL:60}
         retry_interval_after_error_in_seconds: !ENV tag:yaml.org,2002:int ${TASKS_VALIDATE_TRANSFER_RETRY_INTERVAL_AFTER_ERROR:300}
