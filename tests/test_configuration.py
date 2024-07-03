@@ -9,6 +9,7 @@ from pantos.common.configuration import Config
 from pantos.common.configuration import ConfigError
 
 from pantos.validatornode.configuration import get_blockchain_config
+from pantos.validatornode.configuration import get_blockchains_rpc_nodes
 from pantos.validatornode.configuration import load_config
 
 _CONFIGURATION_LOG = '''
@@ -143,6 +144,49 @@ def test_load_config_error(removed_config_section):
         with _prepare_config_file(config) as config_file_path:
             with pytest.raises(ConfigError):
                 load_config(file_path=config_file_path, reload=False)
+
+
+def test_get_blockchain_rpc_nodes_no_active_blockchains_correct():
+    mocked_config = Config('')
+    with unittest.mock.patch('pantos.validatornode.configuration.config',
+                             mocked_config):
+        with _prepare_config_file(_CONFIGURATION) as config_file_path:
+            load_config(file_path=config_file_path, reload=False)
+        for blockchain in Blockchain:
+            blockchain_name = blockchain.name.lower()
+            mocked_config['blockchains'][blockchain_name]['active'] = False
+        assert {} == get_blockchains_rpc_nodes()
+
+
+def test_get_blockchain_rpc_nodes_correct():
+    expected_rpc_nodes = {
+        blockchain: (['https://some.provider'], 10.0)
+        for blockchain in Blockchain
+    }
+    mocked_config = Config('')
+    with unittest.mock.patch('pantos.validatornode.configuration.config',
+                             mocked_config):
+        with _prepare_config_file(_CONFIGURATION) as config_file_path:
+            load_config(file_path=config_file_path, reload=False)
+        assert expected_rpc_nodes == get_blockchains_rpc_nodes()
+
+
+def test_get_blockchain_rpc_nodes_with_fallback_providers_correct():
+    expected_rpc_nodes = {
+        blockchain: (['https://some.provider',
+                      'https://fallback.provider'], 10.0)
+        for blockchain in Blockchain
+    }
+    mocked_config = Config('')
+    with unittest.mock.patch('pantos.validatornode.configuration.config',
+                             mocked_config):
+        with _prepare_config_file(_CONFIGURATION) as config_file_path:
+            load_config(file_path=config_file_path, reload=False)
+        for blockchain in Blockchain:
+            blockchain_name = blockchain.name.lower()
+            mocked_config['blockchains'][blockchain_name][
+                'fallback_providers'] = ['https://fallback.provider']
+        assert expected_rpc_nodes == get_blockchains_rpc_nodes()
 
 
 @contextlib.contextmanager
