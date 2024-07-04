@@ -8,6 +8,7 @@ import random
 import typing
 import uuid
 
+import celery.result  # type: ignore
 from pantos.common.blockchains.enums import Blockchain
 from pantos.common.entities import TransactionStatus
 from pantos.common.types import BlockchainAddress
@@ -30,6 +31,8 @@ from pantos.validatornode.database.access import TransferCreationRequest
 from pantos.validatornode.database.enums import TransferStatus
 from pantos.validatornode.entities import CrossChainTransfer
 from pantos.validatornode.entities import CrossChainTransferDict
+from pantos.validatornode.restclient import PrimaryNodeClient
+from pantos.validatornode.restclient import PrimaryNodeDuplicateSignatureError
 
 _logger = logging.getLogger(__name__)
 
@@ -203,8 +206,9 @@ class TransferInteractor(Interactor):
                         transfer_creation_request)
                     # Schedule the cross-chain transfer to be validated
                     # asynchronously
-                    task_result = validate_transfer_task.delay(
-                        internal_transfer_id, found_transfer.to_dict())
+                    task_result = _schedule_task(validate_transfer_task,
+                                                 internal_transfer_id,
+                                                 found_transfer)
                     task_id = uuid.UUID(task_result.id)
                     database_access.update_transfer_task_id(
                         internal_transfer_id, task_id)
@@ -286,8 +290,85 @@ class TransferInteractor(Interactor):
             cross-chain token transfer.
 
         """
-        assert not self._is_primary_node()  # pragma: no cover
-        raise NotImplementedError  # pragma: no cover
+        try:
+            extra_info = vars(transfer) | {
+                'interal_transfer_id': internal_transfer_id
+            }
+            if self._is_primary_node():
+                _logger.warning(
+                    'former secondary node is now the primary node',
+                    extra=extra_info)
+                _schedule_task(submit_transfer_onchain_task,
+                               internal_transfer_id, transfer)
+                return True
+
+            primary_node_client = PrimaryNodeClient(
+                config['application']['primary_url'])
+            # The validator nonce must be queried everytime since the
+            # primary node may have changed
+            get_request = PrimaryNodeClient.ValidatorNonceGetRequest(
+                transfer.source_blockchain, transfer.source_transaction_id)
+            validator_nonce = primary_node_client.get_validator_nonce(
+                get_request)
+            database_access.update_transfer_validator_nonce(
+                internal_transfer_id, validator_nonce)
+
+            destination_blockchain_client = get_blockchain_client(
+                transfer.eventual_destination_blockchain)
+            destination_blockchain_config = get_blockchain_config(
+                transfer.eventual_destination_blockchain)
+            destination_hub_address = destination_blockchain_config['hub']
+            destination_forwarder_address = destination_blockchain_config[
+                'forwarder']
+            sign_request = BlockchainClient.TransferToMessageSignRequest(
+                transfer, validator_nonce, destination_hub_address,
+                destination_forwarder_address)
+            signature = destination_blockchain_client.\
+                sign_transfer_to_message(sign_request)
+
+            extra_info |= {
+                'validator_nonce': validator_nonce,
+                'destination_hub_address': destination_hub_address,
+                'destination_forwarder_address': destination_forwarder_address
+            }
+            _logger.info(
+                'submitting a token transfer signature to the primary node',
+                extra=extra_info)
+            post_request = PrimaryNodeClient.TransferSignaturePostRequest(
+                transfer.source_blockchain, transfer.source_transaction_id,
+                signature)
+            try:
+                primary_node_client.post_transfer_signature(post_request)
+            except PrimaryNodeDuplicateSignatureError:
+                _logger.warning(
+                    'token transfer signature already submitted to the '
+                    'primary node', extra=extra_info)
+
+            own_address = destination_blockchain_client.get_own_address()
+            # Read the signature first for improved error resilience
+            # during retries
+            stored_signature = database_access.read_validator_node_signature(
+                internal_transfer_id, transfer.eventual_destination_blockchain,
+                destination_forwarder_address, own_address)
+            if stored_signature is None:
+                database_access.create_validator_node_signature(
+                    internal_transfer_id,
+                    transfer.eventual_destination_blockchain,
+                    destination_forwarder_address, own_address, signature)
+            database_access.update_transfer_submitted_destination_transaction(
+                internal_transfer_id, destination_hub_address,
+                destination_forwarder_address)
+            database_access.update_transfer_status(
+                internal_transfer_id,
+                TransferStatus.SOURCE_REVERSAL_TRANSACTION_SUBMITTED
+                if transfer.is_reversal_transfer else
+                TransferStatus.DESTINATION_TRANSACTION_SUBMITTED)
+            return True
+        except Exception:
+            raise self._create_error(
+                'unable to submit a token transfer signature to the primary '
+                'node', internal_transfer_id=internal_transfer_id,
+                transfer=transfer)
 
     def submit_transfer_onchain(self, internal_transfer_id: int,
                                 transfer: CrossChainTransfer) -> bool:
@@ -313,8 +394,17 @@ class TransferInteractor(Interactor):
             transfer.
 
         """
-        assert self._is_primary_node()
         try:
+            extra_info = vars(transfer) | {
+                'interal_transfer_id': internal_transfer_id
+            }
+            if not self._is_primary_node():
+                _logger.warning('former primary node is now a secondary node',
+                                extra=extra_info)
+                _schedule_task(submit_transfer_to_primary_node_task,
+                               internal_transfer_id, transfer)
+                return True
+
             destination_blockchain_client = get_blockchain_client(
                 transfer.eventual_destination_blockchain)
             destination_blockchain_config = get_blockchain_config(
@@ -328,8 +418,7 @@ class TransferInteractor(Interactor):
             assert validator_nonce is not None
             available_signatures = database_access.\
                 read_validator_node_signatures(internal_transfer_id)
-            extra_info = vars(transfer) | {
-                'interal_transfer_id': internal_transfer_id,
+            extra_info |= {
                 'validator_nonce': validator_nonce,
                 'destination_hub_address': destination_hub_address,
                 'destination_forwarder_address': destination_forwarder_address
@@ -369,9 +458,8 @@ class TransferInteractor(Interactor):
                 TransferStatus.SOURCE_REVERSAL_TRANSACTION_SUBMITTED
                 if transfer.is_reversal_transfer else
                 TransferStatus.DESTINATION_TRANSACTION_SUBMITTED)
-            confirm_transfer_task.delay(internal_transfer_id,
-                                        str(internal_transaction_id),
-                                        transfer.to_dict())
+            _schedule_task(confirm_transfer_task, internal_transfer_id,
+                           transfer, internal_transaction_id)
             return True
         except TransferInteractor.__PermanentTransferSubmissionError:
             return True
@@ -433,11 +521,11 @@ class TransferInteractor(Interactor):
                     transfer.eventual_recipient_address,
                     transfer.eventual_destination_token_address)
             if self._is_primary_node():
-                submit_transfer_onchain_task.delay(internal_transfer_id,
-                                                   transfer.to_dict())
+                _schedule_task(submit_transfer_onchain_task,
+                               internal_transfer_id, transfer)
             else:
-                submit_transfer_to_primary_node_task.delay(
-                    internal_transfer_id, transfer.to_dict())
+                _schedule_task(submit_transfer_to_primary_node_task,
+                               internal_transfer_id, transfer)
             return True
         except TransferInteractor.__TransferValidationError as error:
             return error.is_permanent()
@@ -494,8 +582,8 @@ class TransferInteractor(Interactor):
         database_access.reset_transfer_nonce(internal_transfer_id)
         database_access.update_transfer_status(
             internal_transfer_id, TransferStatus.SOURCE_TRANSACTION_DETECTED)
-        task_result = validate_transfer_task.delay(internal_transfer_id,
-                                                   transfer.to_dict())
+        task_result = _schedule_task(validate_transfer_task,
+                                     internal_transfer_id, transfer)
         task_id = uuid.UUID(task_result.id)
         database_access.update_transfer_task_id(internal_transfer_id, task_id)
 
@@ -784,12 +872,10 @@ def confirm_transfer_task(self, internal_transfer_id: int,
                 'internal_transaction_id': internal_transaction_id,
                 'task_id': self.request.id
             }, exc_info=True)
-        retry_interval = config['tasks']['confirm_transfer'][
-            'retry_interval_after_error_in_seconds']
+        retry_interval = _get_task_interval(self, after_error=True)
         raise self.retry(countdown=retry_interval, exc=error)
     if not confirmation_completed:
-        retry_interval = config['tasks']['confirm_transfer'][
-            'retry_interval_in_seconds']
+        retry_interval = _get_task_interval(self)
         raise self.retry(countdown=retry_interval)
     return True
 
@@ -827,12 +913,10 @@ def submit_transfer_to_primary_node_task(
                 'internal_transfer_id': internal_transfer_id,
                 'task_id': self.request.id
             }, exc_info=True)
-        retry_interval = config['tasks']['submit_transfer_to_primary_node'][
-            'retry_interval_after_error_in_seconds']
+        retry_interval = _get_task_interval(self, after_error=True)
         raise self.retry(countdown=retry_interval, exc=error)
     if not submission_completed:
-        retry_interval = config['tasks']['submit_transfer_to_primary_node'][
-            'retry_interval_in_seconds']
+        retry_interval = _get_task_interval(self)
         raise self.retry(countdown=retry_interval)
     return True
 
@@ -869,12 +953,10 @@ def submit_transfer_onchain_task(
                 'internal_transfer_id': internal_transfer_id,
                 'task_id': self.request.id
             }, exc_info=True)
-        retry_interval = config['tasks']['submit_transfer_onchain'][
-            'retry_interval_after_error_in_seconds']
+        retry_interval = _get_task_interval(self, after_error=True)
         raise self.retry(countdown=retry_interval, exc=error)
     if not submission_completed:
-        retry_interval = config['tasks']['submit_transfer_onchain'][
-            'retry_interval_in_seconds']
+        retry_interval = _get_task_interval(self)
         raise self.retry(countdown=retry_interval)
     return True
 
@@ -908,11 +990,34 @@ def validate_transfer_task(self, internal_transfer_id: int,
                 'internal_transfer_id': internal_transfer_id,
                 'task_id': self.request.id
             }, exc_info=True)
-        retry_interval = config['tasks']['validate_transfer'][
-            'retry_interval_after_error_in_seconds']
+        retry_interval = _get_task_interval(self, after_error=True)
         raise self.retry(countdown=retry_interval, exc=error)
     if not validation_completed:
-        retry_interval = config['tasks']['validate_transfer'][
-            'retry_interval_in_seconds']
+        retry_interval = _get_task_interval(self)
         raise self.retry(countdown=retry_interval)
     return True
+
+
+def _get_task_interval(task, after_error: bool = False) -> int:
+    task_name = _get_task_name(task)
+    interval_name = ('retry_interval_after_error_in_seconds'
+                     if after_error else 'retry_interval_in_seconds')
+    return config['tasks'][task_name][interval_name]
+
+
+def _get_task_name(task) -> str:
+    assert task.__name__.endswith('_task')
+    return task.__name__[:-5]
+
+
+def _schedule_task(
+        task, internal_transfer_id: int, transfer: CrossChainTransfer,
+        internal_transaction_id: uuid.UUID | None = None) \
+        -> celery.result.AsyncResult:
+    transfer_dict = transfer.to_dict()
+    args = ((internal_transfer_id,
+             transfer_dict) if internal_transaction_id is None else
+            (internal_transfer_id, str(internal_transaction_id),
+             transfer_dict))
+    countdown = _get_task_interval(task)
+    return task.apply_async(args=args, countdown=countdown)

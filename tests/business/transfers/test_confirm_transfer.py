@@ -21,6 +21,8 @@ _DESTINATION_TRANSACTION_ID = \
 
 _DESTINATION_BLOCK_NUMBER = 170842
 
+_TASK_INTERVAL = 120
+
 
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.get_blockchain_client')
@@ -41,6 +43,13 @@ def test_confirm_transfer_unconfirmed_correct(mock_get_blockchain_client,
 @unittest.mock.patch('pantos.validatornode.business.transfers.database_access')
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.get_blockchain_client')
+@unittest.mock.patch('pantos.validatornode.business.transfers.config', {
+    'tasks': {
+        'validate_transfer': {
+            'retry_interval_in_seconds': _TASK_INTERVAL
+        }
+    }
+})
 def test_confirm_transfer_reverted_correct(
         mock_get_blockchain_client, mock_database_access,
         mock_validate_transfer_task, transfer_interactor, internal_transfer_id,
@@ -50,8 +59,9 @@ def test_confirm_transfer_reverted_correct(
         BlockchainClient.TransferToSubmissionStatusResponse(
             True, TransactionStatus.REVERTED, _DESTINATION_TRANSACTION_ID,
             _DESTINATION_BLOCK_NUMBER)
-    mock_validate_transfer_task.delay().id = str(uuid.uuid4())
-    mock_validate_transfer_task.delay.call_count = 0
+    mock_validate_transfer_task.__name__ = 'validate_transfer_task'
+    mock_validate_transfer_task.apply_async().id = str(uuid.uuid4())
+    mock_validate_transfer_task.apply_async.call_count = 0
     confirmation_completed = transfer_interactor.confirm_transfer(
         internal_transfer_id, _INTERNAL_TRANSACTION_ID, cross_chain_transfer)
     assert confirmation_completed
@@ -60,8 +70,9 @@ def test_confirm_transfer_reverted_correct(
     mock_database_access.reset_transfer_nonce.assert_called_once_with(
         internal_transfer_id)
     mock_database_access.update_transfer_task_id.assert_called_once()
-    mock_validate_transfer_task.delay.assert_called_once_with(
-        internal_transfer_id, cross_chain_transfer_dict)
+    mock_validate_transfer_task.apply_async.assert_called_once_with(
+        args=(internal_transfer_id, cross_chain_transfer_dict),
+        countdown=_TASK_INTERVAL)
 
 
 @pytest.mark.parametrize('is_reversal_transfer', [True, False])
@@ -93,6 +104,13 @@ def test_confirm_transfer_confirmed_correct(
 @unittest.mock.patch('pantos.validatornode.business.transfers.database_access')
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.get_blockchain_client')
+@unittest.mock.patch('pantos.validatornode.business.transfers.config', {
+    'tasks': {
+        'validate_transfer': {
+            'retry_interval_in_seconds': _TASK_INTERVAL
+        }
+    }
+})
 def test_confirm_transfer_unresolvable_error(
         mock_get_blockchain_client, mock_database_access,
         mock_validate_transfer_task, transfer_interactor, internal_transfer_id,
@@ -100,8 +118,9 @@ def test_confirm_transfer_unresolvable_error(
     mock_blockchain_client = mock_get_blockchain_client()
     mock_blockchain_client.get_transfer_to_submission_status.side_effect = \
         UnresolvableTransferToSubmissionError
-    mock_validate_transfer_task.delay().id = str(uuid.uuid4())
-    mock_validate_transfer_task.delay.call_count = 0
+    mock_validate_transfer_task.__name__ = 'validate_transfer_task'
+    mock_validate_transfer_task.apply_async().id = str(uuid.uuid4())
+    mock_validate_transfer_task.apply_async.call_count = 0
     confirmation_completed = transfer_interactor.confirm_transfer(
         internal_transfer_id, _INTERNAL_TRANSACTION_ID, cross_chain_transfer)
     assert confirmation_completed
@@ -110,8 +129,9 @@ def test_confirm_transfer_unresolvable_error(
     mock_database_access.reset_transfer_nonce.assert_called_once_with(
         internal_transfer_id)
     mock_database_access.update_transfer_task_id.assert_called_once()
-    mock_validate_transfer_task.delay.assert_called_once_with(
-        internal_transfer_id, cross_chain_transfer_dict)
+    mock_validate_transfer_task.apply_async.assert_called_once_with(
+        args=(internal_transfer_id, cross_chain_transfer_dict),
+        countdown=_TASK_INTERVAL)
 
 
 @unittest.mock.patch(
@@ -132,13 +152,13 @@ def test_confirm_transfer_error(mock_get_blockchain_client,
 
 
 @pytest.mark.parametrize('confirmation_completed', [True, False])
-@unittest.mock.patch(
-    'pantos.validatornode.business.transfers.config',
-    {'tasks': {
+@unittest.mock.patch('pantos.validatornode.business.transfers.config', {
+    'tasks': {
         'confirm_transfer': {
-            'retry_interval_in_seconds': 120
+            'retry_interval_in_seconds': _TASK_INTERVAL
         }
-    }})
+    }
+})
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.TransferInteractor')
 def test_confirm_transfer_task_correct(mock_transfer_interactor,
@@ -161,13 +181,14 @@ def test_confirm_transfer_task_correct(mock_transfer_interactor,
         internal_transfer_id, _INTERNAL_TRANSACTION_ID, cross_chain_transfer)
 
 
-@unittest.mock.patch('pantos.validatornode.business.transfers.config', {
-    'tasks': {
-        'confirm_transfer': {
-            'retry_interval_after_error_in_seconds': 300
+@unittest.mock.patch(
+    'pantos.validatornode.business.transfers.config', {
+        'tasks': {
+            'confirm_transfer': {
+                'retry_interval_after_error_in_seconds': _TASK_INTERVAL
+            }
         }
-    }
-})
+    })
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.TransferInteractor')
 def test_confirm_transfer_task_error(mock_transfer_interactor,

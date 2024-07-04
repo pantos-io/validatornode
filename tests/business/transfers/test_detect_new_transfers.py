@@ -24,6 +24,8 @@ _LAST_BLOCK_NUMBERS = [228766, 5417158]
 
 _VALIDATOR_NONCE = 386180924573188711
 
+_TASK_INTERVAL = 120
+
 
 @pytest.mark.parametrize('transfers_already_known', [True, False])
 @pytest.mark.parametrize('number_transfers', [31, 443, 3816])
@@ -39,6 +41,13 @@ _VALIDATOR_NONCE = 386180924573188711
     'pantos.validatornode.business.transfers.get_blockchain_client')
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.get_blockchain_config')
+@unittest.mock.patch('pantos.validatornode.business.transfers.config', {
+    'tasks': {
+        'validate_transfer': {
+            'retry_interval_in_seconds': _TASK_INTERVAL
+        }
+    }
+})
 def test_detect_new_transfers_correct(
         mock_get_blockchain_config, mock_get_blockchain_client,
         mock_database_access, mock_validate_transfer_task, mock_random,
@@ -62,7 +71,8 @@ def test_detect_new_transfers_correct(
         if transfers_already_known else None)
     mock_database_access.create_transfer.side_effect = (
         lambda request: request.source_transfer_id)
-    mock_validate_transfer_task.delay().id = str(uuid.uuid4())
+    mock_validate_transfer_task.__name__ = 'validate_transfer_task'
+    mock_validate_transfer_task.apply_async().id = str(uuid.uuid4())
     mock_random.getrandbits.return_value = _VALIDATOR_NONCE
 
     transfer_interactor.detect_new_transfers(_SOURCE_BLOCKCHAIN)
@@ -79,9 +89,10 @@ def test_detect_new_transfers_correct(
         validate_transfer_task_calls = []
         for transfer in outgoing_transfers_response.outgoing_transfers:
             validate_transfer_task_calls.append(
-                unittest.mock.call(transfer.source_transfer_id,
-                                   transfer.to_dict()))
-        mock_validate_transfer_task.delay.assert_has_calls(
+                unittest.mock.call(
+                    args=(transfer.source_transfer_id, transfer.to_dict()),
+                    countdown=_TASK_INTERVAL))
+        mock_validate_transfer_task.apply_async.assert_has_calls(
             validate_transfer_task_calls, any_order=True)
 
     if number_transfers == 0:
