@@ -17,6 +17,8 @@ from pantos.validatornode.database.enums import TransferStatus
 
 _INTERNAL_TRANSACTION_ID = uuid.uuid4()
 
+_TASK_INTERVAL = 120
+
 
 @pytest.mark.parametrize('available_validator_node_signatures', range(3, 5))
 @pytest.mark.parametrize('is_reversal_transfer', [True, False])
@@ -27,6 +29,13 @@ _INTERNAL_TRANSACTION_ID = uuid.uuid4()
     'pantos.validatornode.business.transfers.get_blockchain_client')
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.get_blockchain_config')
+@unittest.mock.patch('pantos.validatornode.business.transfers.config', {
+    'tasks': {
+        'confirm_transfer': {
+            'retry_interval_in_seconds': _TASK_INTERVAL
+        }
+    }
+})
 @unittest.mock.patch('pantos.validatornode.business.base.config',
                      {'application': {
                          'mode': 'primary'
@@ -69,6 +78,7 @@ def test_submit_transfer_onchain_sufficient_signatures_correct(
     mock_database_access.read_validator_node_signatures.return_value = \
         validator_node_signatures
     cross_chain_transfer.is_reversal_transfer = is_reversal_transfer
+    mock_confirm_transfer_task.__name__ = 'confirm_transfer_task'
 
     submission_completed = transfer_interactor.submit_transfer_onchain(
         internal_transfer_id, cross_chain_transfer)
@@ -93,9 +103,9 @@ def test_submit_transfer_onchain_sufficient_signatures_correct(
         TransferStatus.SOURCE_REVERSAL_TRANSACTION_SUBMITTED
         if is_reversal_transfer else
         TransferStatus.DESTINATION_TRANSACTION_SUBMITTED)
-    mock_confirm_transfer_task.delay.assert_called_once_with(
-        internal_transfer_id, str(_INTERNAL_TRANSACTION_ID),
-        cross_chain_transfer.to_dict())
+    mock_confirm_transfer_task.apply_async.assert_called_once_with(
+        args=(internal_transfer_id, str(_INTERNAL_TRANSACTION_ID),
+              cross_chain_transfer.to_dict()), countdown=_TASK_INTERVAL)
 
 
 @pytest.mark.parametrize('recover_signer_address_error', [True, False])
@@ -166,7 +176,7 @@ def test_submit_transfer_onchain_insufficient_signatures_correct(
     mock_database_access.update_transfer_submitted_destination_transaction.\
         assert_not_called()
     mock_database_access.update_transfer_status.assert_not_called()
-    mock_confirm_transfer_task.delay.assert_not_called()
+    mock_confirm_transfer_task.apply_async.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -227,7 +237,7 @@ def test_submit_transfer_onchain_permanent_on_chain_verification_error_correct(
         internal_transfer_id, TransferStatus.SOURCE_REVERSAL_TRANSACTION_FAILED
         if is_reversal_transfer else
         TransferStatus.DESTINATION_TRANSACTION_FAILED)
-    mock_confirm_transfer_task.delay.assert_not_called()
+    mock_confirm_transfer_task.apply_async.assert_not_called()
 
 
 @pytest.mark.parametrize('is_reversal_transfer', [True, False])
@@ -287,17 +297,48 @@ def test_submit_transfer_onchain_transfer_to_error(
         internal_transfer_id, TransferStatus.SOURCE_REVERSAL_TRANSACTION_FAILED
         if is_reversal_transfer else
         TransferStatus.DESTINATION_TRANSACTION_FAILED)
-    mock_confirm_transfer_task.delay.assert_not_called()
+    mock_confirm_transfer_task.apply_async.assert_not_called()
+
+
+@unittest.mock.patch('pantos.validatornode.business.transfers.'
+                     'submit_transfer_to_primary_node_task')
+@unittest.mock.patch(
+    'pantos.validatornode.business.transfers.config', {
+        'tasks': {
+            'submit_transfer_to_primary_node': {
+                'retry_interval_in_seconds': _TASK_INTERVAL
+            },
+        }
+    })
+@unittest.mock.patch('pantos.validatornode.business.base.config',
+                     {'application': {
+                         'mode': 'secondary'
+                     }})
+def test_submit_transfer_onchain_as_secondary_node(
+        mock_submit_transfer_to_primary_node_task, transfer_interactor,
+        internal_transfer_id, cross_chain_transfer):
+    mock_submit_transfer_to_primary_node_task.__name__ = \
+        'submit_transfer_to_primary_node_task'
+
+    submission_completed = transfer_interactor.submit_transfer_onchain(
+        internal_transfer_id, cross_chain_transfer)
+
+    assert submission_completed
+    mock_submit_transfer_to_primary_node_task.apply_async.\
+        assert_called_once_with(
+            args=(internal_transfer_id, cross_chain_transfer.to_dict()),
+            countdown=_TASK_INTERVAL)
 
 
 @pytest.mark.parametrize('submission_completed', [True, False])
 @unittest.mock.patch(
-    'pantos.validatornode.business.transfers.config',
-    {'tasks': {
-        'submit_transfer_onchain': {
-            'retry_interval_in_seconds': 120
+    'pantos.validatornode.business.transfers.config', {
+        'tasks': {
+            'submit_transfer_onchain': {
+                'retry_interval_in_seconds': _TASK_INTERVAL
+            }
         }
-    }})
+    })
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.TransferInteractor')
 def test_submit_transfer_onchain_task_correct(mock_transfer_interactor,
@@ -322,7 +363,7 @@ def test_submit_transfer_onchain_task_correct(mock_transfer_interactor,
     'pantos.validatornode.business.transfers.config', {
         'tasks': {
             'submit_transfer_onchain': {
-                'retry_interval_after_error_in_seconds': 300
+                'retry_interval_after_error_in_seconds': _TASK_INTERVAL
             }
         }
     })

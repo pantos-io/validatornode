@@ -9,6 +9,8 @@ from pantos.validatornode.business.transfers import TransferInteractorError
 from pantos.validatornode.business.transfers import validate_transfer_task
 from pantos.validatornode.database.enums import TransferStatus
 
+_TASK_INTERVAL = 120
+
 
 @pytest.mark.parametrize('token_decimals_correct', [True, False])
 @pytest.mark.parametrize('external_token_address_correct', [True, False])
@@ -24,6 +26,17 @@ from pantos.validatornode.database.enums import TransferStatus
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.get_blockchain_client')
 @unittest.mock.patch('pantos.validatornode.business.base.config')
+@unittest.mock.patch(
+    'pantos.validatornode.business.transfers.config', {
+        'tasks': {
+            'submit_transfer_onchain': {
+                'retry_interval_in_seconds': _TASK_INTERVAL
+            },
+            'submit_transfer_to_primary_node': {
+                'retry_interval_in_seconds': _TASK_INTERVAL
+            }
+        }
+    })
 def test_validate_transfer_confirmed_correct(
         mock_config, mock_get_blockchain_client, mock_database_access,
         mock_submit_transfer_onchain_task,
@@ -38,6 +51,9 @@ def test_validate_transfer_confirmed_correct(
         }
     }
     mock_config.__getitem__.side_effect = mock_config_dict.__getitem__
+    mock_submit_transfer_onchain_task.__name__ = 'submit_transfer_onchain_task'
+    mock_submit_transfer_to_primary_node_task.__name__ = \
+        'submit_transfer_to_primary_node_task'
     transfer_in_source_transaction = (
         cross_chain_transfer
         if not in_other_source_transaction else dataclasses.replace(
@@ -68,14 +84,19 @@ def test_validate_transfer_confirmed_correct(
             cross_chain_transfer.eventual_destination_token_address)
     mock_database_access.update_transfer_status.assert_not_called()
     if is_primary_node:
-        mock_submit_transfer_onchain_task.delay.assert_called_once_with(
-            internal_transfer_id, transfer_in_source_transaction.to_dict())
-        mock_submit_transfer_to_primary_node_task.delay.assert_not_called()
+        mock_submit_transfer_onchain_task.apply_async.assert_called_once_with(
+            args=(internal_transfer_id,
+                  transfer_in_source_transaction.to_dict()),
+            countdown=_TASK_INTERVAL)
+        mock_submit_transfer_to_primary_node_task.apply_async.\
+            assert_not_called()
     else:
-        mock_submit_transfer_onchain_task.delay.assert_not_called()
-        mock_submit_transfer_to_primary_node_task.delay.\
-            assert_called_once_with(internal_transfer_id,
-                                    transfer_in_source_transaction.to_dict())
+        mock_submit_transfer_onchain_task.apply_async.assert_not_called()
+        mock_submit_transfer_to_primary_node_task.apply_async.\
+            assert_called_once_with(
+                args=(internal_transfer_id,
+                      transfer_in_source_transaction.to_dict()),
+                countdown=_TASK_INTERVAL)
 
 
 @unittest.mock.patch('pantos.validatornode.business.transfers.'
@@ -101,8 +122,8 @@ def test_validate_transfer_unconfirmed_correct(
     assert not validation_completed
     mock_database_access.update_reversal_transfer.assert_not_called()
     mock_database_access.update_transfer_status.assert_not_called()
-    mock_submit_transfer_onchain_task.delay.assert_not_called()
-    mock_submit_transfer_to_primary_node_task.delay.assert_not_called()
+    mock_submit_transfer_onchain_task.apply_async.assert_not_called()
+    mock_submit_transfer_to_primary_node_task.apply_async.assert_not_called()
 
 
 @unittest.mock.patch('pantos.validatornode.business.transfers.'
@@ -129,8 +150,8 @@ def test_validate_transfer_reverted_correct(
     mock_database_access.update_reversal_transfer.assert_not_called()
     mock_database_access.update_transfer_status.assert_called_once_with(
         internal_transfer_id, TransferStatus.SOURCE_TRANSACTION_REVERTED)
-    mock_submit_transfer_onchain_task.delay.assert_not_called()
-    mock_submit_transfer_to_primary_node_task.delay.assert_not_called()
+    mock_submit_transfer_onchain_task.apply_async.assert_not_called()
+    mock_submit_transfer_to_primary_node_task.apply_async.assert_not_called()
 
 
 @unittest.mock.patch('pantos.validatornode.business.transfers.'
@@ -157,8 +178,8 @@ def test_validate_transfer_invalid_correct(
     mock_database_access.update_reversal_transfer.assert_not_called()
     mock_database_access.update_transfer_status.assert_called_once_with(
         internal_transfer_id, TransferStatus.SOURCE_TRANSACTION_INVALID)
-    mock_submit_transfer_onchain_task.delay.assert_not_called()
-    mock_submit_transfer_to_primary_node_task.delay.assert_not_called()
+    mock_submit_transfer_onchain_task.apply_async.assert_not_called()
+    mock_submit_transfer_to_primary_node_task.apply_async.assert_not_called()
 
 
 @unittest.mock.patch('pantos.validatornode.business.transfers.'
@@ -186,8 +207,8 @@ def test_validate_transfer_not_found_in_transaction_error(
     assert (exception_info.value.details['transfer'] == cross_chain_transfer)
     mock_database_access.update_reversal_transfer.assert_not_called()
     mock_database_access.update_transfer_status.assert_not_called()
-    mock_submit_transfer_onchain_task.delay.assert_not_called()
-    mock_submit_transfer_to_primary_node_task.delay.assert_not_called()
+    mock_submit_transfer_onchain_task.apply_async.assert_not_called()
+    mock_submit_transfer_to_primary_node_task.apply_async.assert_not_called()
 
 
 @unittest.mock.patch('pantos.validatornode.business.transfers.'
@@ -213,18 +234,18 @@ def test_validate_transfer_other_error(
     assert (exception_info.value.details['transfer'] == cross_chain_transfer)
     mock_database_access.update_reversal_transfer.assert_not_called()
     mock_database_access.update_transfer_status.assert_not_called()
-    mock_submit_transfer_onchain_task.delay.assert_not_called()
-    mock_submit_transfer_to_primary_node_task.delay.assert_not_called()
+    mock_submit_transfer_onchain_task.apply_async.assert_not_called()
+    mock_submit_transfer_to_primary_node_task.apply_async.assert_not_called()
 
 
 @pytest.mark.parametrize('validation_completed', [True, False])
-@unittest.mock.patch(
-    'pantos.validatornode.business.transfers.config',
-    {'tasks': {
+@unittest.mock.patch('pantos.validatornode.business.transfers.config', {
+    'tasks': {
         'validate_transfer': {
-            'retry_interval_in_seconds': 120
+            'retry_interval_in_seconds': _TASK_INTERVAL
         }
-    }})
+    }
+})
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.TransferInteractor')
 def test_validate_transfer_task_correct(mock_transfer_interactor,
@@ -244,13 +265,14 @@ def test_validate_transfer_task_correct(mock_transfer_interactor,
         internal_transfer_id, cross_chain_transfer)
 
 
-@unittest.mock.patch('pantos.validatornode.business.transfers.config', {
-    'tasks': {
-        'validate_transfer': {
-            'retry_interval_after_error_in_seconds': 300
+@unittest.mock.patch(
+    'pantos.validatornode.business.transfers.config', {
+        'tasks': {
+            'validate_transfer': {
+                'retry_interval_after_error_in_seconds': _TASK_INTERVAL
+            }
         }
-    }
-})
+    })
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.TransferInteractor')
 def test_validate_transfer_task_error(mock_transfer_interactor,
