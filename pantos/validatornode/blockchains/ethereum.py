@@ -231,8 +231,8 @@ class EthereumClient(BlockchainClient):
             node_connections = self.__create_node_connections()
             transaction_receipt = node_connections.eth.get_transaction_receipt(
                 typing.cast(web3.types.HexStr, transaction_id)).get()
-            assert (
-                transaction_receipt['transactionHash'].hex() == transaction_id)
+            assert (transaction_receipt['transactionHash'].to_0x_hex() ==
+                    transaction_id)
             hub_contract = self._create_hub_contract(node_connections,
                                                      hub_address)
             event_logs = hub_contract.events.TransferFrom().process_receipt(
@@ -457,9 +457,9 @@ class EthereumClient(BlockchainClient):
             assert isinstance(fee, int)
             assert isinstance(service_node_address, str)
             # Transaction and block data
-            transaction_hash = event_log['transactionHash'].hex()
+            transaction_hash = event_log['transactionHash'].to_0x_hex()
             block_number = event_log['blockNumber']
-            block_hash = event_log['blockHash'].hex()
+            block_hash = event_log['blockHash'].to_0x_hex()
             assert isinstance(transaction_hash, str)
             assert isinstance(block_number, int)
             assert isinstance(block_hash, str)
