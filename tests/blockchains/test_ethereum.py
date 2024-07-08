@@ -806,7 +806,7 @@ def test_read_outgoing_transfers_from_block_results_not_matching_error(
 
 def test_read_outgoing_transfers_in_transaction_correct(ethereum_client, w3):
     transaction_id = _OUTGOING_TRANSFER_TRANSACTION_RECEIPT[
-        'transactionHash'].hex()
+        'transactionHash'].to_0x_hex()
     hub_address = _OUTGOING_TRANSFERS[0].source_hub_address
     with unittest.mock.patch.object(
             w3.eth, 'get_transaction_receipt',
@@ -867,7 +867,7 @@ def test_read_transfer_to_transaction_data_correct(
         mock_create_hub_contract, read_destination_transfer_id,
         ethereum_client, w3):
     transaction_id = _INCOMING_TRANSFER_TRANSACTION_RECEIPT[
-        'transactionHash'].hex()
+        'transactionHash'].to_0x_hex()
     destination_transfer_id = 5363
     mock_hub_contract = mock_create_hub_contract()
     mock_hub_contract.events.TransferTo().process_receipt().__getitem__(
@@ -895,7 +895,7 @@ def test_read_transfer_to_transaction_data_correct(
                           (Exception, EthereumClientError)])
 def test_read_transfer_to_transaction_data_error(errors, ethereum_client, w3):
     transaction_id = _INCOMING_TRANSFER_TRANSACTION_RECEIPT[
-        'transactionHash'].hex()
+        'transactionHash'].to_0x_hex()
 
     with unittest.mock.patch.object(w3.eth, 'get_transaction_receipt',
                                     side_effect=errors[0]):
