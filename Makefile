@@ -1,8 +1,21 @@
-PANTOS_VERSION := $(shell poetry version -s)
-PANTOS_REVISION ?= 1
+PANTOS_VALIDATOR_NODE_VERSION := $(shell command -v poetry >/dev/null 2>&1 && poetry version -s || echo "0.0.0")
 PANTOS_VALIDATOR_NODE_SSH_HOST ?= bdev-validator-node
-PYTHON_FILES_WITHOUT_TESTS := pantos/validatornode linux/start-web-server
+PYTHON_FILES_WITHOUT_TESTS := pantos/validatornode linux/scripts/start-web.py
 PYTHON_FILES := $(PYTHON_FILES_WITHOUT_TESTS) tests
+
+.PHONY: check-version
+check-version:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is not set"; \
+		exit 1; \
+	fi
+	@VERSION_FROM_POETRY=$$(poetry version -s) ; \
+	if test "$$VERSION_FROM_POETRY" != "$(VERSION)"; then \
+		echo "Version mismatch: expected $(VERSION), got $$VERSION_FROM_POETRY" ; \
+		exit 1 ; \
+	else \
+		echo "Version check passed" ; \
+	fi
 
 .PHONY: dist
 dist: tar wheel debian
@@ -81,8 +94,19 @@ dist/pantos_validator_node-$(PANTOS_VERSION).tar.gz: pantos alembic.ini validato
 	rm pantos/pantos-validator-node.sh
 	rm pantos/pantos-validator-node-worker.sh
 
+check-poetry-plugin:
+	@if poetry self show plugins | grep -q poetry-plugin-freeze; then \
+		echo "poetry-plugin-freeze is already added."; \
+	else \
+		echo "poetry-plugin-freeze is not added. Adding now..."; \
+		poetry self add poetry-plugin-freeze; \
+	fi
+
+freeze-wheel: check-poetry-plugin
+	poetry freeze-wheel
+
 .PHONY: wheel
-wheel: dist/pantos_validator_node-$(PANTOS_VERSION)-py3-none-any.whl
+wheel: dist/pantos_validator_node-$(PANTOS_VERSION)-py3-none-any.whl freeze-wheel
 
 dist/pantos_validator_node-$(PANTOS_VERSION)-py3-none-any.whl: pantos alembic.ini validator-node-config.yml validator-node-config.env
 	cp validator-node-config.yml pantos/validator-node-config.yml
@@ -93,33 +117,34 @@ dist/pantos_validator_node-$(PANTOS_VERSION)-py3-none-any.whl: pantos alembic.in
 	rm pantos/validator-node-config.yml
 	rm pantos/validator-node-config.env
 
-.PHONY: debian
-debian: dist/pantos-validator-node-$(PANTOS_VERSION)-$(PANTOS_REVISION)_all.deb
+.PHONY: debian-build-deps
+debian-build-deps:
+	mk-build-deps --install --tool "apt-get --no-install-recommends -y" debian/control --remove
 
-dist/pantos-validator-node-$(PANTOS_VERSION)-$(PANTOS_REVISION)_all.deb: linux/ dist/pantos_validator_node-$(PANTOS_VERSION)-py3-none-any.whl
-	$(eval debian_package := pantos-validator-node-$(PANTOS_VERSION)-$(PANTOS_REVISION)_all)
-	$(eval build_directory := build/debian/$(debian_package))
-	mkdir -p $(build_directory)/opt/pantos/validator-node
-	cp dist/pantos_validator_node-$(PANTOS_VERSION)-py3-none-any.whl $(build_directory)/opt/pantos/validator-node/
-	cp linux/start-web-server $(build_directory)/opt/pantos/validator-node/
-	mkdir -p $(build_directory)/etc/systemd/system
-	cp linux/pantos-validator-node-server.service $(build_directory)/etc/systemd/system/
-	cp linux/pantos-validator-node-celery.service $(build_directory)/etc/systemd/system/
-	mkdir -p $(build_directory)/DEBIAN
-	cat linux/debian/control | sed -e 's/VERSION/$(PANTOS_VERSION)/g' > $(build_directory)/DEBIAN/control
-	cat linux/debian/postinst | sed -e 's/VERSION/$(PANTOS_VERSION)/g' > $(build_directory)/DEBIAN/postinst
-	cp linux/debian/prerm $(build_directory)/DEBIAN/prerm
-	cp linux/debian/postrm $(build_directory)/DEBIAN/postrm
-	chmod 755 $(build_directory)/DEBIAN/postinst
-	chmod 755 $(build_directory)/DEBIAN/prerm
-	chmod 755 $(build_directory)/DEBIAN/postrm
-	cd build/debian/; \
-		dpkg-deb --build --root-owner-group -Zgzip $(debian_package)
-	mv build/debian/$(debian_package).deb dist/
+.PHONY: debian-full
+debian-full:
+	mkdir -p dist
+	sed 's/VERSION_PLACEHOLDER/$(PANTOS_VALIDATOR_NODE_VERSION)/' configurator/DEBIAN/control.template > configurator/DEBIAN/control
+	dpkg-deb --build configurator dist/pantos-validator-node-full_$(PANTOS_VALIDATOR_NODE_VERSION)_all.deb
+	rm configurator/DEBIAN/control
+
+.PHONY: debian
+debian:
+	$(eval debian_package := pantos-validator-node_$(PANTOS_VALIDATOR_NODE_VERSION)_*.deb)
+	@if ! conda --version; then \
+		echo "Conda not found. Please install conda."; \
+		exit 1; \
+	fi; \
+	dpkg-buildpackage -uc -us -g
+	mkdir -p dist
+	mv ../$(debian_package) dist/
+
+debian-all: debian debian-full
+
 
 .PHONY: remote-install
-remote-install: dist/pantos-validator-node-$(PANTOS_VERSION)-$(PANTOS_REVISION)_all.deb
-	$(eval deb_file := pantos-validator-node-$(PANTOS_VERSION)-$(PANTOS_REVISION)_all.deb)
+remote-install: debian-all
+	$(eval deb_file := pantos-validator-node*_$(PANTOS_VALIDATOR_NODE_VERSION)_*.deb)
 	scp dist/$(deb_file) $(PANTOS_VALIDATOR_NODE_SSH_HOST):
 ifdef DEV_PANTOS_COMMON
 	scp -r $(DEV_PANTOS_COMMON) $(PANTOS_VALIDATOR_NODE_SSH_HOST):
@@ -127,8 +152,8 @@ ifdef DEV_PANTOS_COMMON
 		sudo systemctl stop pantos-validator-node-celery;\
 		sudo systemctl stop pantos-validator-node-server;\
 		sudo apt install -y ./$(deb_file);\
-		sudo rm -rf /opt/pantos/validator-node/virtual-environment/lib/python3.*/site-packages/pantos/common/;\
-		sudo cp -r common/ /opt/pantos/validator-node/virtual-environment/lib/python3.*/site-packages/pantos/;\
+		sudo rm -rf /opt/pantos/pantos-validator-node/lib/python3.*/site-packages/pantos/common/;\
+		sudo cp -r common/ /opt/pantos/pantos-validator-node/lib/python3.*/site-packages/pantos/;\
 		sudo systemctl start pantos-validator-node-server;\
 		sudo systemctl start pantos-validator-node-celery;\
 		rm -rf common;\
@@ -169,3 +194,9 @@ clean:
 	rm -r -f build/
 	rm -r -f dist/
 	rm -r -f pantos_validator_node.egg-info/
+
+docker:
+	docker compose -f docker-compose.yml -f docker-compose.override.yml up --force-recreate $(ARGS)
+
+docker-prod:
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml up --force-recreate $(ARGS)

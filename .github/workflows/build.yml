@@ -7,15 +7,15 @@ on:
         required: false
         type: string
         default: "1.0.0"
-      revision:
-        description: 'Revision to build'
-        required: false
-        type: string
-        default: ${{ github.run_attempt }}
       environment:
         description: 'Environment where the secrets are stored'
         required: false
         type: string
+      architecture:
+        description: 'Architecture to build'
+        required: false
+        type: string
+        default: "amd64"
     secrets:
       GPG_PRIVATE_KEY:
         description: 'GPG private key'
@@ -23,29 +23,54 @@ on:
       GPG_PASSPHRASE:
         description: 'GPG passphrase'
         required: false
+    outputs:
+      version: 
+        description: 'Version of the built package'
+        value: ${{ jobs.build-deb.outputs.version }}
 
 jobs:
   build-deb:
     name: Build and attach .deb and .whl packages
-    runs-on: ubuntu-latest
+    # TODO: Change ubuntu-20.04 for the ARM public runner
+    runs-on: ${{ inputs.architecture == 'amd64' && 'ubuntu-latest' || 'ubuntu-20.04' }}
     environment: ${{ inputs.environment }}
+    outputs:
+      version: ${{ steps.is-signed-build.outputs.built-version }}
+    permissions: 
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10"]
     steps:
-      - uses: step-security/harden-runner@v2
+      - name: Harden Runner
+        uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
         with:
-          disable-sudo: false
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            azure.archive.ubuntu.com:80
+            esm.ubuntu.com:443
+            files.pythonhosted.org:443
+            github.com:443
+            motd.ubuntu.com:443
+            packages.microsoft.com:443
+            pypi.org:443
+            repo.anaconda.com:443
+            install.python-poetry.org:443
+            
       - uses: actions/checkout@v4
 
       - name: Set up Poetry
         uses: pantos-io/ci-workflows/.github/actions/install-poetry@v1
         with:
-          python-version: 3.12
-          runner-os: ubuntu-latest
+          python-version: ${{ matrix.python-version }}
+          runner-os: ${{ inputs.architecture == 'amd64' && 'ubuntu-latest' || 'ubuntu-20.04' }}
 
       - name: Check secrets
         id: is-signed-build
         run: |
           echo "HAS_SECRETS=$(if [ -n "$GPG_PRIVATE_KEY" ] && [ -n "$GPG_PASSPHRASE" ]; then echo 'true'; else echo 'false'; fi)" >> $GITHUB_OUTPUT
+          echo "built-version=$(poetry version --short)" >> $GITHUB_OUTPUT
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -53,10 +78,32 @@ jobs:
       - name: Import GPG key
         if: steps.is-signed-build.outputs.HAS_SECRETS == 'true'
         id: import-gpg
-        uses: crazy-max/ghaction-import-gpg@v6
+        uses: crazy-max/ghaction-import-gpg@01dd5d3ca463c7f10f7f4f7b4f177225ac661ee4 # v6.1.0
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Install conda dependencies
+        run: |
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then
+              MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh";
+          elif [ "$ARCH" = "aarch64" ]; then
+              MINICONDA_URL="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-aarch64.sh";
+          else
+              echo "Unsupported architecture: $ARCH";
+              exit 1;
+          fi
+          wget "$MINICONDA_URL" -O miniconda.sh
+          bash miniconda.sh -b
+          rm -f miniconda.sh
+        shell: sh
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install build-essential debhelper devscripts equivs dh-virtualenv python3-venv dh-sysuser dh-exec -y
+          sudo make debian-build-deps
 
       - name: Install signing dependencies
         if: steps.is-signed-build.outputs.HAS_SECRETS == 'true'
@@ -64,13 +111,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y debsigs
 
+      - name: Ensure version
+        if: steps.is-signed-build.outputs.HAS_SECRETS == 'true'
+        run: |
+          make check-version VERSION=${{ inputs.version }}
+
       - name: Build package
         run: |
-          make debian
+          make debian debian-full
           make wheel
-        env:
-          PANTOS_VERSION: ${{ inputs.version }}
-          PANTOS_REVISION: ${{ inputs.revision }}
+        shell: sh
 
       - name: Sign package
         if: steps.is-signed-build.outputs.HAS_SECRETS == 'true'
@@ -80,5 +130,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: build
+          name: build-${{ inputs.architecture }}
           path: dist/*

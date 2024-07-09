@@ -343,20 +343,22 @@ def read_transfer_to_data(
         return None
     internal_transfer_id = result[0]
     destination_blockchain = Blockchain(result[1])
-    source_transfer_id = result[2].as_integer_ratio()[0]
+    source_transfer_id = result[2].as_integer_ratio()[0]  # type: ignore
     sender_address = BlockchainAddress(result[3])
     recipient_address = BlockchainAddress(result[4])
     source_token_address = BlockchainAddress(result[5])
     destination_token_address = BlockchainAddress(result[6])
-    amount = result[7].as_integer_ratio()[0]
-    validator_nonce = result[8].as_integer_ratio()[0]
+    amount = result[7].as_integer_ratio()[0]  # type: ignore
+    validator_nonce = result[8].as_integer_ratio()[0]  # type: ignore
     return TransferToDataResponse(
-        internal_transfer_id=internal_transfer_id,
+        internal_transfer_id=internal_transfer_id,  # type: ignore
         destination_blockchain=destination_blockchain,
-        source_transfer_id=source_transfer_id, sender_address=sender_address,
+        source_transfer_id=source_transfer_id,
+        sender_address=sender_address,
         recipient_address=recipient_address,
         source_token_address=source_token_address,
-        destination_token_address=destination_token_address, amount=amount,
+        destination_token_address=destination_token_address,
+        amount=amount,
         validator_nonce=validator_nonce)
 
 
@@ -420,7 +422,10 @@ def read_validator_node_signatures(
                 ValidatorNodeSignature.transfer_id == internal_transfer_id)
     with get_session() as session:
         results = session.execute(statement).all()
-    return {BlockchainAddress(result[0]): result[1] for result in results}
+    return {
+        BlockchainAddress(result[0]): result[1]  # type: ignore
+        for result in results
+    }
 
 
 def read_validator_nonce_by_internal_transfer_id(

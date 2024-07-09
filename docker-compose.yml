@@ -4,12 +4,6 @@ networks:
   pantos-validator-node:
     name: pantos-validator-node
     attachable: true
-  pantos-service-node:
-    name: pantos-service-node
-    external: true
-  pantos-ethereum:
-    name: pantos-ethereum
-    external: true
 
 services:
   app:
@@ -24,26 +18,17 @@ services:
           - ${DOCKER_REGISTRY-pantosio}/validator-node-app:${DOCKER_TAG-latest}
     networks:
       pantos-validator-node:
-    env_file:
-      - validator-node-config.env
+    env_file: []
     environment:
+      # Ignore the env file inside the docker container
+      PANTOS_ENV_FILE: ' '
       APP_HOST: 0.0.0.0
       APP_PORT: 8080
-      APP_PRIMARY_URL: http://app:8080
       APP_LOG_FILE_ENABLED: false
       APP_LOG_FORMAT: human_readable
       DB_URL: postgresql://pantos-validator-node:pantos@db/pantos-validator-node
       CELERY_BROKER: amqp://pantos-validator-node:pantos@broker:5672/pantos-validator-node
       CELERY_BACKEND: db+postgresql://pantos-validator-node:pantos@db/pantos-validator-node-celery
-    volumes:
-      - type: bind
-        source: ./keystore
-        target: /etc/pantos/validator-node.keystore
-        read_only: true
-      - type: bind
-        source: ./signer_key.pem
-        target: /etc/pantos/validator-node-signer.pem
-        read_only: true
     ports:
       - 8080:8080
     depends_on:
@@ -63,34 +48,26 @@ services:
           - ${DOCKER_REGISTRY-pantosio}/validator-node-worker:${DOCKER_TAG-latest}
     networks:
       pantos-validator-node:
-    env_file:
-      - validator-node-config.env
+    env_file: []
     environment:
+      # Ignore the env file inside the docker container
+      PANTOS_ENV_FILE: ' '
       APP_HOST: 0.0.0.0
       APP_PORT: 8080
-      APP_PRIMARY_URL: http://app:8080
       CELERY_LOG_FORMAT: human_readable
       CELERY_LOG_FILE_ENABLED: false
       DB_URL: postgresql://pantos-validator-node:pantos@db/pantos-validator-node
       CELERY_BROKER: amqp://pantos-validator-node:pantos@broker:5672/pantos-validator-node
       CELERY_BACKEND: db+postgresql://pantos-validator-node:pantos@db/pantos-validator-node-celery
-    volumes:
-      - type: bind
-        source: ./keystore
-        target: /etc/pantos/validator-node.keystore
-        read_only: true
-      - type: bind
-        source: ./signer_key.pem
-        target: /etc/pantos/validator-node-signer.pem
-        read_only: true
     depends_on:
+      # Wait for the app to setup the DB
       app:
         condition: service_healthy
   db:
     image: postgres:latest
     restart: on-failure
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres"]
+      test: [ "CMD", "pg_isready", "-U", "postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -101,7 +78,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
     volumes:
-      - ./postgresql_data:/postgresql_data
+      - postgresql_data:/postgresql_data
       - type: bind
         source: ./db_init.sh
         target: /docker-entrypoint-initdb.d/init-user-db.sh
@@ -113,7 +90,7 @@ services:
     networks:
       pantos-validator-node:
     healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
+      test: [ "CMD", "rabbitmqctl", "status" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -122,4 +99,8 @@ services:
       RABBITMQ_DEFAULT_PASS: pantos
       RABBITMQ_DEFAULT_VHOST: pantos-validator-node
     volumes:
-      - ./rabbitmq_data:/rabbitmq_data
+      - rabbitmq_data:/rabbitmq_data
+
+volumes:
+  postgresql_data:
+  rabbitmq_data:

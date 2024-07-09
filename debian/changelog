@@ -1,0 +1,5 @@
+pantos-validator-node (1.8.1) UNRELEASED; urgency=medium
+
+  * pantos-validator-node: Initial debian packaging
+
+ -- Pantos GmbH <contact@pantos.io> Thu, 24 Jun 2024 14:00:15 +0000

@@ -1,0 +1,6 @@
+#!/usr/bin/dh-exec
+validator-node-config.yml opt/pantos/pantos-validator-node
+alembic.ini opt/pantos/pantos-validator-node
+validator-node-config.env etc/pantos
+linux/etc/default/* etc/default
+linux/scripts/* opt/pantos/pantos-validator-node/bin
