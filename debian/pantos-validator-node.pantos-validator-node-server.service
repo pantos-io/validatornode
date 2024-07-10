@@ -1,0 +1,18 @@
+[Unit]
+Description=Service Node web server reference implementation for the Pantos multi-blockchain system
+After=network.target postgresql.service rabbitmq-server.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+KillMode=mixed
+WorkingDirectory=/opt/pantos/pantos-validator-node
+EnvironmentFile=/etc/default/pantos-validator-node
+ExecStart=/usr/bin/pantos-validator-node-server
+StandardOutput=append:/var/log/pantos/validator-node/server-service.log
+StandardError=append:/var/log/pantos/validator-node/server-service.log
+
+[Install]
+WantedBy=multi-user.target

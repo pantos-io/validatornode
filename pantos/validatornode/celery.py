@@ -12,9 +12,13 @@ from pantos.common.logging import initialize_logger
 
 from pantos.validatornode.application import initialize_application
 from pantos.validatornode.configuration import config
+from pantos.validatornode.database import get_engine
+
+_logger = logging.getLogger(__name__)
+"""Logger for this module."""
 
 
-def is_celery_worker_process() -> bool:
+def is_main_module() -> bool:
     """Determine if the current process is a Celery worker process.
 
     Returns
@@ -23,11 +27,11 @@ def is_celery_worker_process() -> bool:
         True if the current process is a Celery worker process.
 
     """
-    return (len(sys.argv) > 0 and sys.argv[0].endswith('celery')
-            and 'worker' in sys.argv)
+    return __name__ == '__main__' or any('celery' in arg for arg in sys.argv)
 
 
-if is_celery_worker_process():
+if is_main_module():
+    _logger.info('Initializing the Celery application...')
     initialize_application()  # pragma: no cover
 
 celery_app = celery.Celery(
@@ -75,3 +79,17 @@ celery_app.conf.update(result_expires=None,
                        task_default_routing_key='pantos.validatornode',
                        task_track_started=True,
                        worker_enable_remote_control=False)
+
+
+# Source: https://stackoverflow.com/questions/43944787/sqlalchemy-celery-with-scoped-session-error/54751019#54751019 # noqa
+@celery.signals.worker_process_init.connect
+def prep_db_pool(**kwargs):
+    """
+    When Celery forks the parent process, it includes the db engine & connection
+    pool. However, db connections should not be shared across processes. Thus,
+    we instruct the engine to dispose of all existing connections, prompting the
+    opening of new ones in child processes as needed.
+    More info:
+    https://docs.sqlalchemy.org/en/latest/core/pooling.html#using-connection-pools-with-multiprocessing
+    """ # noqa
+    get_engine().dispose()  # pragma: no cover

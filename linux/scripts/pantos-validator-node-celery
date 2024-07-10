@@ -1,0 +1,58 @@
+#! /bin/sh
+#
+# Helper to launch the celery worker
+
+APP_NAME=pantos-validator-node
+APP_DIR=/opt/pantos/"$APP_NAME"
+export PYTHONHOME=$APP_DIR
+export PATH=$APP_DIR/bin:$PATH
+export PYTHONUNBUFFERED=1
+
+source_if_not_set() {
+    [ ! -f "$1" ] && return
+    echo "Sourcing $1"
+    while IFS= read -r line || [ -n "$line" ]; do
+        [ -z "$line" ] || [ "${line#\#}" != "$line" ] && continue
+        key="${line%%=*}"
+        eval currentValue=\$$key
+        [ -n "$currentValue" ] && continue
+        export "$line"
+    done < "$1"
+}
+
+source_if_not_set /etc/default/"$APP_NAME"
+
+cd "$APP_DIR"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help)
+      echo "Usage: $0 [-h|--help] [-s|--status]"
+      echo "-h, --help   Show this help message"
+      echo "-s, --status Start the celery worker with status monitoring"
+      exit 0
+      ;;
+    -s|--status)
+      echo "Querying the status of the celery worker"
+      exec ./bin/python -m celery -A pantos.validatornode report 
+      exit $?
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if [ -n "$PANTOS_STATUS_MONITOR" ]; then
+    echo "Starting the status monitor"
+    exec ./bin/python -m celery -A pantos.validatornode flower &
+fi
+
+# Check if the current user is not "pantos-validator-node" and if so, switch to that user
+# This can happen when started directly from the command line
+EXTRA_ARGS=""
+if [ "$(id -u)" -ne "$(id -u "$APP_NAME")" ]; then
+    EXTRA_ARGS="--uid $(id -u "$APP_NAME")"
+fi
+
+exec ./bin/python -m celery -A pantos.validatornode worker $EXTRA_ARGS -l INFO -n pantos.validatornode -Q pantos.validatornode

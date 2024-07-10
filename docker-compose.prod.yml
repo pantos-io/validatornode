@@ -1,0 +1,19 @@
+name: validator-node
+
+services:
+  app:
+    env_file:
+      - validator-node-config.env
+    volumes:
+      - type: bind
+        source: ./keystore
+        target: /etc/pantos/validator-node.keystore
+        read_only: true
+  worker:
+    env_file:
+      - validator-node-config.env
+    volumes:
+      - type: bind
+        source: ./keystore
+        target: /etc/pantos/validator-node.keystore
+        read_only: true

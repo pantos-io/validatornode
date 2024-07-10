@@ -1,0 +1,4 @@
+# Environment file for pantos-validator-node systemd units and cron jobs
+# Set a custom Config path
+# PANTOS_CONFIG=
+PANTOS_ENV_FILE=/etc/pantos/validator-node-config.env
