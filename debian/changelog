@@ -1,4 +1,10 @@
-pantos-validator-node (1.8.1) UNRELEASED; urgency=medium
+pantos-validator-node (1.8.2) UNRELEASED; urgency=medium
+
+  * TBD
+
+ -- Pantos GmbH <contact@pantos.io> 
+
+pantos-validator-node (1.8.1) RELEASED; urgency=medium
 
   * pantos-validator-node: Initial debian packaging
 
