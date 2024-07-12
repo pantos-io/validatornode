@@ -1,5 +1,5 @@
 PANTOS_VALIDATOR_NODE_VERSION := $(shell command -v poetry >/dev/null 2>&1 && poetry version -s || echo "0.0.0")
-PANTOS_VALIDATOR_NODE_SSH_HOST ?= bdev-validator-node
+PANTOS_VALIDATOR_NODE_SSH_HOST ?= bdev-validatornode01
 PYTHON_FILES_WITHOUT_TESTS := pantos/validatornode linux/scripts/start-web.py
 PYTHON_FILES := $(PYTHON_FILES_WITHOUT_TESTS) tests
 

@@ -345,16 +345,9 @@ class TransferInteractor(Interactor):
                     'primary node', extra=extra_info)
 
             own_address = destination_blockchain_client.get_own_address()
-            # Read the signature first for improved error resilience
-            # during retries
-            stored_signature = database_access.read_validator_node_signature(
+            self.__store_validator_node_signature(
                 internal_transfer_id, transfer.eventual_destination_blockchain,
-                destination_forwarder_address, own_address)
-            if stored_signature is None:
-                database_access.create_validator_node_signature(
-                    internal_transfer_id,
-                    transfer.eventual_destination_blockchain,
-                    destination_forwarder_address, own_address, signature)
+                destination_forwarder_address, own_address, signature)
             database_access.update_transfer_submitted_destination_transaction(
                 internal_transfer_id, destination_hub_address,
                 destination_forwarder_address)
@@ -446,7 +439,7 @@ class TransferInteractor(Interactor):
 
             primary_node_address = \
                 destination_blockchain_client.get_own_address()
-            database_access.create_validator_node_signature(
+            self.__store_validator_node_signature(
                 internal_transfer_id, transfer.eventual_destination_blockchain,
                 destination_forwarder_address, primary_node_address,
                 available_signatures[primary_node_address])
@@ -566,6 +559,22 @@ class TransferInteractor(Interactor):
         primary_node_signature = destination_blockchain_client.\
             sign_transfer_to_message(sign_request)
         signatures[primary_node_address] = primary_node_signature
+
+    def __store_validator_node_signature(
+            self, internal_transfer_id: int,
+            destination_blockchain: Blockchain,
+            destination_forwarder_address: BlockchainAddress,
+            validator_node_address: BlockchainAddress, signature: str) -> None:
+        # Read the signature first for improved error resilience during
+        # retries
+        stored_signature = database_access.read_validator_node_signature(
+            internal_transfer_id, destination_blockchain,
+            destination_forwarder_address, validator_node_address)
+        if stored_signature is None:
+            database_access.create_validator_node_signature(
+                internal_transfer_id, destination_blockchain,
+                destination_forwarder_address, validator_node_address,
+                signature)
 
     def __find_unused_validator_nonce(
             self, destination_blockchain: Blockchain) -> int:

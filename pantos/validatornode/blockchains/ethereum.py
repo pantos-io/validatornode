@@ -31,7 +31,7 @@ from pantos.validatornode.database import access as database_access
 from pantos.validatornode.entities import CrossChainTransfer
 
 _HUB_TRANSFER_TO_FUNCTION_SELECTOR = '0x92557c8a'
-_HUB_TRANSFER_TO_GAS = 250000
+_HUB_TRANSFER_TO_GAS = 400000
 
 _NON_MATCHING_FORWARDER_ERROR = \
     'PantosHub: Forwarder of Hub and transferred token must match'
