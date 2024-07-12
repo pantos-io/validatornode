@@ -155,8 +155,6 @@ jobs:
 
       - name: Preconfigure package
         run: |
-          echo 'pantos-validator-node-full pantos/validator-node/create_signer_key boolean true' | sudo debconf-set-selections;
-          echo 'pantos-validator-node-full pantos/validator-node/signer_key_password string 1234' | sudo debconf-set-selections;
           echo 'pantos-validator-node-full pantos/common/configure_postgresql boolean true' | sudo debconf-set-selections;
           echo 'pantos-validator-node-full pantos/common/configure_rabbitmq boolean true' | sudo debconf-set-selections;
           echo 'pantos-validator-node-full pantos/common/start_services boolean true' | sudo debconf-set-selections;

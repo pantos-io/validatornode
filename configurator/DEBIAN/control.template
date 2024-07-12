@@ -8,5 +8,5 @@ Package: pantos-validator-node-full
 Version: VERSION_PLACEHOLDER
 Architecture: all
 Pre-Depends: debhelper (>=10), dpkg (>= 1.16.1)
-Depends: pantos-validator-node, postgresql, rabbitmq-server, openssh-client
+Depends: pantos-validator-node, postgresql, rabbitmq-server
 Description: Configurator package for the Validator Node reference implementation for the Pantos multi-blockchain system.
