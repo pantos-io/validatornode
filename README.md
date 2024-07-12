@@ -68,7 +68,7 @@ You can run a local setup with docker by doing the following steps:
 
 - The variables `DB_URL`, `CELERY_BACKEND` and `CELERY_BROKER` are already defined in the `docker-compose.yml`
 - Modify the `.env` file to match your current setup
-- Ensure you have a `keystore` and `signer_key.pem` file located in the same directory
+- Ensure you have a `keystore` file located in the same directory
 - Run `docker compose up`
 
 Please note that you may need to add a load balancer or another webserver in front of this setup should you want to host this setup under a specific domain.

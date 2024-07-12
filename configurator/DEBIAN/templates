@@ -1,13 +1,3 @@
-Template: pantos/validator-node/create_signer_key
-Type: boolean
-Default: false
-Description: No signer key detected. Create a new signer key?
- You can always create your own signer key later following the gitbook instructions.
-
-Template: pantos/validator-node/signer_key_password
-Type: password
-Description: Please provide the signer key password:
-
 Template: pantos/common/configure_postgresql
 Type: boolean
 Default: true

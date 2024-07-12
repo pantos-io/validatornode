@@ -29,7 +29,6 @@ RUN_AS="pantos-validator-node"
 application_directory='/opt/pantos/pantos-validator-node'
 base_directory='/etc/pantos'
 env_file="${base_directory}/validator-node-config.env"
-signer_key_file="${base_directory}/validator-node-signer.pem"
 
 # User names
 postgresql_user=${RUN_AS}
