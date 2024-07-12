@@ -45,7 +45,7 @@ done
 
 if [ -n "$PANTOS_STATUS_MONITOR" ]; then
     echo "Starting the status monitor"
-    exec ./bin/python -m celery -A pantos.validatornode flower &
+    ./bin/python -m celery -A pantos.validatornode flower &
 fi
 
 # Check if the current user is not "pantos-validator-node" and if so, switch to that user
@@ -55,4 +55,9 @@ if [ "$(id -u)" -ne "$(id -u "$APP_NAME")" ]; then
     EXTRA_ARGS="--uid $(id -u "$APP_NAME")"
 fi
 
-exec ./bin/python -m celery -A pantos.validatornode worker $EXTRA_ARGS -l INFO -n pantos.validatornode -Q pantos.validatornode
+while true; do
+  ./bin/python -m celery -A pantos.validatornode worker $EXTRA_ARGS -l INFO -n pantos.validatornode -Q pantos.validatornode
+
+  echo "Celery worker exited with code $?. Respawning.." >&2
+  sleep 1
+done

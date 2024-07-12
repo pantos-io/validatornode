@@ -1,13 +1,22 @@
-name: validator-node
-
 networks:
   pantos-validator-node:
-    name: pantos-validator-node
+    name: pantos-validator-node-${INSTANCE-1}
+    driver: overlay
+    internal: true
+    attachable: true
+  pantos-validator-node-primary:
+    name: pantos-validator-node-primary
+    driver: overlay
     attachable: true
 
 services:
   app:
-    restart: always
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     image: pantosio/validator-node-app:${DOCKER_TAG-latest}
     build:
       context: .
@@ -18,26 +27,33 @@ services:
           - ${DOCKER_REGISTRY-pantosio}/validator-node-app:${DOCKER_TAG-latest}
     networks:
       pantos-validator-node:
+      pantos-validator-node-primary:
+        aliases:
+          - pantos-validator-node-${INSTANCE-1}
     env_file: []
     environment:
       # Ignore the env file inside the docker container
       PANTOS_ENV_FILE: ' '
       APP_HOST: 0.0.0.0
       APP_PORT: 8080
-      APP_LOG_FILE_ENABLED: false
+      APP_MODE: ${APP_MODE-primary}
+      APP_LOG_FILE_ENABLED: 'false'
       APP_LOG_FORMAT: human_readable
       DB_URL: postgresql://pantos-validator-node:pantos@db/pantos-validator-node
       CELERY_BROKER: amqp://pantos-validator-node:pantos@broker:5672/pantos-validator-node
       CELERY_BACKEND: db+postgresql://pantos-validator-node:pantos@db/pantos-validator-node-celery
     ports:
-      - 8080:8081
+      - 809${INSTANCE-0}:8080
     depends_on:
-      broker:
-        condition: service_healthy
-      db:
-        condition: service_healthy
+      - broker
+      - db
   worker:
-    restart: always
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     image: pantosio/validator-node-worker:${DOCKER_TAG-latest}
     build:
       context: .
@@ -54,15 +70,15 @@ services:
       PANTOS_ENV_FILE: ' '
       APP_HOST: 0.0.0.0
       APP_PORT: 8080
+      APP_MODE: ${APP_MODE-primary}
       CELERY_LOG_FORMAT: human_readable
-      CELERY_LOG_FILE_ENABLED: false
+      CELERY_LOG_FILE_ENABLED: 'false'
       DB_URL: postgresql://pantos-validator-node:pantos@db/pantos-validator-node
       CELERY_BROKER: amqp://pantos-validator-node:pantos@broker:5672/pantos-validator-node
       CELERY_BACKEND: db+postgresql://pantos-validator-node:pantos@db/pantos-validator-node-celery
     depends_on:
       # Wait for the app to setup the DB
-      app:
-        condition: service_healthy
+      - app
   db:
     image: postgres:latest
     restart: on-failure

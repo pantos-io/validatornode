@@ -66,6 +66,7 @@ We also distribute docker images in DockerHub with each release. These are made 
 
 You can run a local setup with docker by doing the following steps:
 
+- Enable swarm mode with `docker swarm init`. This is required because we're using the `overlay` network driver.
 - The variables `DB_URL`, `CELERY_BACKEND` and `CELERY_BROKER` are already defined in the `docker-compose.yml`
 - Modify the `.env` file to match your current setup
 - Ensure you have a `keystore` file located in the same directory
@@ -74,6 +75,24 @@ You can run a local setup with docker by doing the following steps:
 Please note that you may need to add a load balancer or another webserver in front of this setup should you want to host this setup under a specific domain.
 
 If you're hosting this on a cloud provider (AWS, GCP, Azure or alike), these are normally provided. You just need to point the load balancer to the port exposed by the app, `8080`, and configure the rest accordingly.
+
+#### Multiple local deployments using docker swarm
+
+We support multiple local deployments, for example for testing purposes, using docker swarm. To get started you need to enable swarm mode (if you haven't) by running:
+
+`docker swarm init`
+
+Then you can run the stacks like this:
+
+`make docker-multiple INSTANCE_COUNT=<number of instances>`
+
+To remove all the stacks, run the following:
+
+`make docker-remove`
+
+Please note that this mode uses an incremental amount of resources and that Docker Desktop doesn't fully support displaying it, but it should be good enough to test multi-sig locally.
+
+**IMPORTANT** If you want to switch between this mode and docker compose you **must** remove the counterpart by using `docker compose down -v` or `make docker-remove` respectively.
 
 #### Python package
 
