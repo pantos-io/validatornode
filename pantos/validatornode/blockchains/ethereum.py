@@ -330,7 +330,7 @@ class EthereumClient(BlockchainClient):
                 request.destination_forwarder_address, pan_token_address)
             signed_message = web3.Account.sign_message(
                 message, private_key=self.__private_key)
-            return signed_message.signature
+            return signed_message.signature.to_0x_hex()
         except Exception:
             raise self._create_error('unable to sign a transferTo message',
                                      request=request)
