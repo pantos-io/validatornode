@@ -72,7 +72,7 @@ jobs:
         run: |
           cat /etc/docker/daemon.json
           echo '{ "live-restore": false }' | sudo tee /etc/docker/daemon.json
-          systemctl reload docker
+          sudo systemctl reload docker
 
       - name: Run Docker
         run: |
