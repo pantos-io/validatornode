@@ -21,6 +21,7 @@ _TASK_INTERVAL = 120
 
 
 @pytest.mark.parametrize('available_validator_node_signatures', range(3, 5))
+@pytest.mark.parametrize('primary_node_signature_in_database', [True, False])
 @pytest.mark.parametrize('is_reversal_transfer', [True, False])
 @unittest.mock.patch(
     'pantos.validatornode.business.transfers.confirm_transfer_task')
@@ -43,6 +44,7 @@ _TASK_INTERVAL = 120
 def test_submit_transfer_onchain_sufficient_signatures_correct(
         mock_get_blockchain_config, mock_get_blockchain_client,
         mock_database_access, mock_confirm_transfer_task, is_reversal_transfer,
+        primary_node_signature_in_database,
         available_validator_node_signatures, transfer_interactor,
         internal_transfer_id, cross_chain_transfer, validator_nonce,
         destination_hub_address, destination_forwarder_address,
@@ -75,6 +77,8 @@ def test_submit_transfer_onchain_sufficient_signatures_correct(
         _INTERNAL_TRANSACTION_ID
     mock_database_access.read_validator_nonce_by_internal_transfer_id.\
         return_value = validator_nonce
+    mock_database_access.read_validator_node_signature.return_value = (
+        primary_node_signature if primary_node_signature_in_database else None)
     mock_database_access.read_validator_node_signatures.return_value = \
         validator_node_signatures
     cross_chain_transfer.is_reversal_transfer = is_reversal_transfer
@@ -89,12 +93,16 @@ def test_submit_transfer_onchain_sufficient_signatures_correct(
             BlockchainClient.TransferToSubmissionStartRequest(
                 internal_transfer_id, cross_chain_transfer, validator_nonce,
                 validator_node_signatures))
-    mock_database_access.create_validator_node_signature.\
-        assert_called_once_with(
-            internal_transfer_id,
-            cross_chain_transfer.eventual_destination_blockchain,
-            destination_forwarder_address, primary_node_address,
-            primary_node_signature)
+    if primary_node_signature_in_database:
+        mock_database_access.create_validator_node_signature.\
+            assert_not_called()
+    else:
+        mock_database_access.create_validator_node_signature.\
+            assert_called_once_with(
+                internal_transfer_id,
+                cross_chain_transfer.eventual_destination_blockchain,
+                destination_forwarder_address, primary_node_address,
+                primary_node_signature)
     mock_database_access.update_transfer_submitted_destination_transaction.\
         assert_called_once_with(internal_transfer_id, destination_hub_address,
                                 destination_forwarder_address)

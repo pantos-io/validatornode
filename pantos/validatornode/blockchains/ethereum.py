@@ -31,7 +31,8 @@ from pantos.validatornode.database import access as database_access
 from pantos.validatornode.entities import CrossChainTransfer
 
 _HUB_TRANSFER_TO_FUNCTION_SELECTOR = '0x92557c8a'
-_HUB_TRANSFER_TO_GAS = 250000
+_HUB_TRANSFER_TO_BASE_GAS = 150000
+_HUB_TRANSFER_TO_GAS_PER_SIGNER = 100000
 
 _NON_MATCHING_FORWARDER_ERROR = \
     'PantosHub: Forwarder of Hub and transferred token must match'
@@ -553,7 +554,8 @@ class EthereumClient(BlockchainClient):
         function_selector = _HUB_TRANSFER_TO_FUNCTION_SELECTOR
         function_args = (on_chain_request, sorted_signer_addresses,
                          sorted_signatures)
-        gas = _HUB_TRANSFER_TO_GAS
+        gas = (_HUB_TRANSFER_TO_BASE_GAS +
+               len(sorted_signer_addresses) * _HUB_TRANSFER_TO_GAS_PER_SIGNER)
         min_adaptable_fee_per_gas = \
             self._get_config()['min_adaptable_fee_per_gas']
         max_total_fee_per_gas = self._get_config().get('max_total_fee_per_gas')
