@@ -57,6 +57,12 @@ fi
 
 while true; do
   ./bin/python -m celery -A pantos.validatornode worker $EXTRA_ARGS -l INFO -n pantos.validatornode -Q pantos.validatornode
+  PYTHON_EXIT_CODE=$?
+
+  if [ "$PANTOS_CELERY_AUTORESTART" != "true" ]; then
+    echo "Auto-restart is disabled. Exiting with code $PYTHON_EXIT_CODE."
+    exit $PYTHON_EXIT_CODE
+  fi
 
   echo "Celery worker exited with code $?. Respawning.." >&2
   sleep 1
