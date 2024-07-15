@@ -1,13 +1,36 @@
 Package: pantos-validator-node
-Version: 1.8.1
+Version: 1.8.2
 Architecture: all
 Maintainer: Pantos GmbH <contact@pantos.io>
-Depends: libpq-dev, openssl, python3-dev (>= 3.10), apache2, apache2-dev, python3-venv
-Recommends: iptables, postgresql, rabbitmq-server, python3-pip, systemctl
-Filename: ./pantos-validator-node-1.8.1-1_all.deb
-Size: 70876
-MD5sum: 441bc61db8f1859bc1f2c913eae95cd1
-SHA1: 01b1f9db163e1ab52d7546088e6d3ee40bbed69b
-SHA256: 9b72e83fcdb97124e1153e68f71e0a49d768f169e1b9f4f902ed1454e391c44e
-Description: Validator Node reference implementation for the Pantos multi-blockchain system.
+Installed-Size: 405059
+Pre-Depends: dpkg (>= 1.16.1), python3, python3-venv
+Depends: debconf (>= 0.5) | debconf-2.0, sysuser-helper (<< 2.0), libpq-dev, debconf
+Recommends: iptables
+Filename: ./pantos-validator-node_1.8.2_all.deb
+Size: 103152566
+MD5sum: 0da64bad2b89ff3acdc51c5fda7c3924
+SHA1: 50cf6bbbf30f2633a6cf1b9cb8fd19d4bff3f658
+SHA256: 31bae5b6022db0967e8b54cb10ac0481c00ab523aa87bb513bbcb812dfea543f
+Section: contrib/python
+Priority: extra
+Homepage: https://github.com/pantos-io/validatornode
+Description: Service Node reference implementation for the Pantos multi-blockchain system.
+
+Package: pantos-validator-node-full
+Source: pantos-validator-node-full
+Version: 1.8.2
+Architecture: all
+Maintainer: Pantos GmbH <contact@pantos.io>
+Pre-Depends: debhelper (>=10), dpkg (>= 1.16.1)
+Depends: pantos-validator-node, postgresql, rabbitmq-server
+Filename: ./pantos-validator-node-full_1.8.2_all.deb
+Size: 5076
+MD5sum: 0ee8db275835d9c4c5df13c289b1a548
+SHA1: 51e24688f37fab02ccc907a84988a5521df219e9
+SHA256: 9fd332d147dbbb749c0a6da97c2f19bed412db54f73ae8157b6d16005bf680cc
+Section: contrib/python
+Priority: extra
+Homepage: https://github.com/pantos-io/validatornode
+Description: Configurator package for the Validator Node reference implementation for the Pantos multi-blockchain system.
+Standards-Version: 3.9.5
 
