@@ -17,14 +17,15 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
-    image: pantosio/validator-node-app:${DOCKER_TAG-latest}
+    image: pantosio/validator-node-app:${DOCKER_TAG-local}
     build:
       context: .
       dockerfile: Dockerfile
       target: validatornode01
       x-bake:
         tags:
-          - ${DOCKER_REGISTRY-pantosio}/validator-node-app:${DOCKER_TAG-latest}
+          - ${DOCKER_REGISTRY-pantosio}/validator-node-app:${DOCKER_TAG-local}
+          - ${DOCKER_REGISTRY-pantosio}/validator-node-app:${EXTRA_TAG-local}
     networks:
       pantos-validator-node:
       pantos-validator-node-primary:
@@ -54,14 +55,15 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
-    image: pantosio/validator-node-worker:${DOCKER_TAG-latest}
+    image: pantosio/validator-node-worker:${DOCKER_TAG-local}
     build:
       context: .
       dockerfile: Dockerfile
       target: validatornode01-celery-worker
       x-bake:
         tags:
-          - ${DOCKER_REGISTRY-pantosio}/validator-node-worker:${DOCKER_TAG-latest}
+          - ${DOCKER_REGISTRY-pantosio}/validator-node-worker:${DOCKER_TAG-local}
+          - ${DOCKER_REGISTRY-pantosio}/validator-node-worker:${EXTRA_TAG-local}
     networks:
       pantos-validator-node:
     env_file: []
