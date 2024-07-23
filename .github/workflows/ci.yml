@@ -15,7 +15,7 @@ jobs:
       database-name: pantos-validator-node-test
       database-user: pantos-validator-node
       database-password: 7FVg7AE3
-    secrets: inherit  
+    secrets: inherit
   docker-build:
     name: Build Docker images
     runs-on: ubuntu-latest
