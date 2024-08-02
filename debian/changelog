@@ -1,8 +1,34 @@
-pantos-validator-node (1.8.2) UNRELEASED; urgency=medium
+pantos-validator-node (1.8.3) UNRELEASED; urgency=medium
 
   * TBD
 
- -- Pantos GmbH <contact@pantos.io> 
+-- Pantos GmbH <contact@pantos.io>
+
+pantos-validator-node (1.8.2) RELEASED; urgency=medium
+
+  * bump flake8 from 7.0.0 to 7.1.0 in the other-dependencies group by @dependabot
+  * build(deps): bump sqlalchemy from 2.0.30 to 2.0.31 by @dependabot
+  * [PAN-1995] adapt to ABI versioning by @danut13
+  * [PAN-1871] On-chain transfer submission logic by @markuslevonyak
+  * [PAN-1978] Client for primary nodes REST API by @markuslevonyak
+  * [PAN-2003] Add docker vulnerabilities analysis by @juanmanuel-tirado
+  * build(deps): bump alembic from 1.13.1 to 1.13.2 by @dependabot
+  * build(deps-dev): bump types-requests from 2.32.0.20240602 to 2.32.0.20240622 by @dependabot
+  * [PAN-1979/-1980] Secondary node validator nonce updates and transfer submission task by @markuslevonyak
+  * [PAN-2070] add blockchain check endpoint by @danut13
+  * [PAN-1981] Business logic for off-chain transfer submission by @markuslevonyak
+  * [PAN-1998] Upgrade to hexbytes 1.x by @markuslevonyak
+  * feat: PAN-2006 test validator node on ci by @jpantos
+  * Bump version to 1.8.2 by @juanmanuel-tirado
+  * fix: add missing debian template start services by @jpantos
+  * [PAN-2082] Return transferTo signature as string by @markuslevonyak
+  * fix: remove signer key leftovers by @jpantos
+  * build(deps): bump types-requests from 2.32.0.20240622 to 2.32.0.20240712 by @dependabot
+  * feat: PAN-1832 enable docker swarm for concurrent local deployments by @jpantos
+  * [PAN-2082] Improved retry resilience and increased gas by @markuslevonyak
+  * fix: download artifacts requires now regex by @jpantos
+
+ -- Pantos GmbH <contact@pantos.io> Mon, 15 Jul 2024
 
 pantos-validator-node (1.8.1) RELEASED; urgency=medium
 
