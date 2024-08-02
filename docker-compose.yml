@@ -17,7 +17,7 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
-    image: pantosio/validator-node-app:${DOCKER_TAG-local}
+    image: ${DOCKER_REGISTRY-pantosio}/validator-node-app:${DOCKER_TAG-local}
     build:
       context: .
       dockerfile: Dockerfile
@@ -45,6 +45,12 @@ services:
       CELERY_BACKEND: db+postgresql://pantos-validator-node:pantos@db/pantos-validator-node-celery
     ports:
       - 809${INSTANCE-0}:8080
+    healthcheck:
+      test: ["CMD", "/usr/bin/pantos-validator-node-server", "--status"]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     depends_on:
       - broker
       - db
@@ -55,7 +61,7 @@ services:
         delay: 5s
         max_attempts: 3
         window: 120s
-    image: pantosio/validator-node-worker:${DOCKER_TAG-local}
+    image: ${DOCKER_REGISTRY-pantosio}/validator-node-worker:${DOCKER_TAG-local}
     build:
       context: .
       dockerfile: Dockerfile
@@ -79,6 +85,12 @@ services:
       DB_URL: postgresql://pantos-validator-node:pantos@db/pantos-validator-node
       CELERY_BROKER: amqp://pantos-validator-node:pantos@broker:5672/pantos-validator-node
       CELERY_BACKEND: db+postgresql://pantos-validator-node:pantos@db/pantos-validator-node-celery
+    healthcheck:
+      test: ["CMD", "/usr/bin/pantos-validator-node-celery", "--status"]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     depends_on:
       # Wait for the app to setup the DB
       - app
