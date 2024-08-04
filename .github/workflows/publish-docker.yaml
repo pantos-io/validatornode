@@ -36,7 +36,7 @@ jobs:
     environment: 
       name: ${{ inputs.environment }}
       url: ${{ steps.set-output-url.outputs.deployment_dockerhub_url }}
-    runs-on: 'macos-latest'
+    runs-on: 'ubuntu-latest'
     permissions:
       id-token: write
     steps:
