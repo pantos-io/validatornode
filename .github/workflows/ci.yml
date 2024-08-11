@@ -115,7 +115,7 @@ jobs:
         run: |
           make docker
 
-      - name: Dump service node logs
+      - name: Dump validator node logs
         if: always()
         run: |
           timeout 1 make docker-logs || true
