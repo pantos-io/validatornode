@@ -12,7 +12,7 @@ dist/
 find.sh
 local/
 debian/.debhelper
-debian/pantos-service-node
+debian/pantos-validator-node
 debian/tmp
 debian/*debhelper*
 debian/files
