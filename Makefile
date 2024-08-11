@@ -139,10 +139,18 @@ debian:
 	fi; \
 	dpkg-buildpackage -uc -us -g
 	mkdir -p dist
-	mv ../$(debian_package) dist/
+	ARCHITECTURE=$$(dpkg --print-architecture); \
+	mv ../$(debian_package) dist/pantos-validator-node_$(PANTOS_SERVICE_NODE_VERSION)_$${ARCHITECTURE}.deb
 
+.PHONY: debian-all
 debian-all: debian debian-full
 
+.PHONY: docker-debian-build
+docker-debian-build:
+	docker buildx build -t pantos-validator-node-build -f Dockerfile --target dev . --load $(ARGS);
+	CONTAINER_ID=$$(docker create pantos-validator-node-build); \
+    docker cp $${CONTAINER_ID}:/app/dist/ .; \
+    docker rm $${CONTAINER_ID}
 
 .PHONY: remote-install
 remote-install: debian-all
