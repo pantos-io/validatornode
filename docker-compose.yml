@@ -96,7 +96,12 @@ services:
       - app
   db:
     image: postgres:latest
-    restart: on-failure
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     healthcheck:
       test: [ "CMD", "pg_isready", "-U", "postgres" ]
       interval: 10s
@@ -116,7 +121,12 @@ services:
         read_only: true
   broker:
     image: rabbitmq:latest
-    restart: on-failure
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
     hostname: pantos-validator-node
     networks:
       pantos-validator-node:
