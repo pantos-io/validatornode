@@ -1,11 +1,11 @@
 networks:
   pantos-validator-node:
-    name: pantos-validator-node-${INSTANCE-1}
+    name: pantos-validator-node-${STACK_IDENTIFIER}-${INSTANCE-1}
     driver: overlay
     internal: true
     attachable: true
   pantos-validator-node-primary:
-    name: pantos-validator-node-primary
+    name: pantos-validator-node-${STACK_IDENTIFIER}-primary
     driver: overlay
     attachable: true
 
@@ -52,8 +52,10 @@ services:
       retries: 3
       start_period: 10s
     depends_on:
-      - broker
-      - db
+      broker:
+        condition: service_healthy
+      db:
+        condition: service_healthy
   worker:
     deploy:
       restart_policy:
@@ -92,8 +94,8 @@ services:
       retries: 3
       start_period: 20s
     depends_on:
-      # Wait for the app to setup the DB
-      - app
+      app:
+        condition: service_healthy
   db:
     image: postgres:latest
     deploy:
