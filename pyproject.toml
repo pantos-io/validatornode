@@ -52,7 +52,7 @@ semantic-version = "2.10.0"
 requests = "2.32.3"
 hexbytes = "1.2.1"
 flower = "^2.0.1"
-gunicorn = "^22.0.0"
+gunicorn = ">=22,<24"
 types-requests = "^2.32.0.20240622"
 types-sqlalchemy = "^1.4.53.38"
 
