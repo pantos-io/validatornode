@@ -27,7 +27,9 @@ def is_main_module() -> bool:
         True if the current process is a Celery worker process.
 
     """
-    return __name__ == '__main__' or any('celery' in arg for arg in sys.argv)
+    potential_celery_markers = ['celery', 'worker', 'beat', 'flower']
+    return (__name__ == '__main__'
+            or any(marker in sys.argv for marker in potential_celery_markers))
 
 
 if is_main_module():
