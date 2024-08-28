@@ -105,6 +105,7 @@ jobs:
 
       - name: Build and load
         run: |
+          mkdir export
           make docker-build ARGS='--set "*.cache-from=type=local,src=/tmp/.buildx-cache" \
             --set "*.cache-to=type=local,dest=/tmp/.buildx-cache-new" \
             --set "*.platform=linux/${{ matrix.arch }}" \
