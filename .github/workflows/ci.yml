@@ -114,7 +114,7 @@ jobs:
             --set "worker.output=type=tar,dest=export/worker.tar"'
 
       - name: Test image
-        timeout-minutes: 10
+        timeout-minutes: ${{ matrix.arch == 'amd64' && 10 || 30 }}
         run: |
           make docker
 
@@ -337,6 +337,7 @@ jobs:
           sparse-checkout: |
             docker-compose.yml
             docker-compose.override.yml
+            validator-node-config.docker.env
             Makefile
             
       - name: Download artifacts
@@ -349,6 +350,7 @@ jobs:
         run: |
           cat export/app.tar | docker import - pantosio/validator-node-app:local
           cat export/worker.tar | docker import - pantosio/validator-node-worker:local
+
       - uses: pantos-io/e2e-testing/.github/actions/run-tests@main
         with:
           validatornode-path: ${{ env.PANTOS_VALIDATOR_NODE }}
