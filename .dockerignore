@@ -15,4 +15,5 @@ rabbitmq_data
 Dockerfile
 docker-compose*
 .dockerignore
-.github
+.github/
+export
