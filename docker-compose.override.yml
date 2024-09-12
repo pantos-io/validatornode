@@ -31,6 +31,12 @@ services:
         source: ./validator-node-config.docker.env
         target: /etc/pantos/validator-node-config.env
         read_only: true
+    develop:
+      watch:
+        - action: sync+restart
+          path: validator-node-config.docker.env
+          target: /root/validator-node-config.docker.env
+
   worker:
     networks:
       pantos-validator-node:
@@ -58,6 +64,11 @@ services:
         source: ./validator-node-config.docker.env
         target: /etc/pantos/validator-node-config.env
         read_only: true
+    develop:
+      watch:
+        - action: sync+restart
+          path: validator-node-config.docker.env
+          target: /root/validator-node-config.docker.env
 
 volumes:
   bnb-data:

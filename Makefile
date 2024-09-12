@@ -4,6 +4,7 @@ PYTHON_FILES_WITHOUT_TESTS := pantos/validatornode linux/scripts/start-web.py
 PYTHON_FILES := $(PYTHON_FILES_WITHOUT_TESTS) tests
 STACK_BASE_NAME=stack-validator-node
 INSTANCE_COUNT ?= 1
+DEV_MODE ?= false
 
 .PHONY: check-version
 check-version:
@@ -229,7 +230,11 @@ docker: check-swarm-init docker-build
 		fi; \
 		export INSTANCE=$$i; \
 		echo "Deploying stack $$STACK_NAME"; \
-        docker compose -f docker-compose.yml -f docker-compose.override.yml -p $$STACK_NAME $(EXTRA_COMPOSE) up -d --wait $(ARGS); \
+		if [ "$(DEV_MODE)" = "true" ]; then \
+			echo "Running in development mode"; \
+			EXTRA_COMPOSE="$(EXTRA_COMPOSE) --watch"; \
+		fi ; \
+        docker compose -f docker-compose.yml -f docker-compose.override.yml -p $$STACK_NAME $$EXTRA_COMPOSE up -d --wait $(ARGS); \
 		) & \
     done; \
 	wait

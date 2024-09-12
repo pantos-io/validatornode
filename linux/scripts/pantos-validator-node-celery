@@ -49,9 +49,15 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+PROGRAM="./bin/python"
+if [ "$DEV_MODE" = "true" ]; then
+    echo "Running in development mode"
+    PROGRAM="./bin/python watchmedo autorestart --directory=$APP_DIR --pattern=*.py --recursive -- ./bin/python"
+fi
+
 if [ -n "$PANTOS_STATUS_MONITOR" ]; then
     echo "Starting the status monitor"
-    ./bin/python -m celery -A pantos.validatornode flower &
+    $PROGRAM -m celery -A pantos.validatornode flower &
 fi
 
 # Check if the current user is not "pantos-validator-node" and if so, switch to that user
@@ -63,7 +69,7 @@ fi
 
 while true; do
   echo "Starting the celery worker"
-  ./bin/python -m celery -A pantos.validatornode worker $EXTRA_ARGS -l INFO -n pantos.validatornode -Q pantos.validatornode
+  $PROGRAM -m celery -A pantos.validatornode worker $EXTRA_ARGS -l INFO -n pantos.validatornode -Q pantos.validatornode
   PYTHON_EXIT_CODE=$?
 
   if [ "$PANTOS_CELERY_AUTORESTART" != "true" ]; then

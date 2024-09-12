@@ -56,6 +56,42 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./pantos
+          target: /opt/pantos/pantos-service-node/lib/python3.12/site-packages/pantos
+        - action: sync+restart
+          path: ./linux/scripts/start-web.py
+          target: /opt/pantos/pantos-validator-node/bin/start-web.py
+        - action: sync+restart
+          path: ./linux/scripts/pantos-validator-node-server
+          target: /opt/pantos/pantos-validator-node/bin/pantos-validator-node-server
+        - action: sync+restart
+          path: validator-node-config.yml
+          target: /opt/pantos/pantos-validator-node/validator-node-config.yml
+        - action: sync+restart
+          path: alembic.ini
+          target: /opt/pantos/pantos-validator-node/alembic.ini
+        - action: sync+restart
+          path: validator-node-config.env
+          target: /root/validator-node-config.env
+        - action: sync+restart
+          path: bids.yml
+          target: /etc/validator-node-bids.yml
+        - action: rebuild
+          path: Dockerfile
+        - action: rebuild
+          path: debian
+        - action: rebuild
+          path: configurator
+        - action: rebuild
+          path: linux/etc
+        - action: rebuild
+          path: pyproject.toml
+        - action: rebuild
+          path: poetry.lock
+
   worker:
     deploy:
       restart_policy:
@@ -96,6 +132,39 @@ services:
     depends_on:
       app:
         condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./pantos
+          target: /opt/pantos/pantos-validator-node/lib/python3.12/site-packages/pantos
+        - action: sync+restart
+          path: ./linux/scripts/pantos-validator-node-celery
+          target: /opt/pantos/pantos-validator-node/bin/pantos-validator-node-celery
+        - action: sync+restart
+          path: validator-node-config.yml
+          target: /opt/pantos/pantos-validator-node/validator-node-config.yml
+        - action: sync+restart
+          path: alembic.ini
+          target: /opt/pantos/pantos-validator-node/alembic.ini
+        - action: sync+restart
+          path: validator-node-config.env
+          target: /root/validator-node-config.env
+        - action: sync+restart
+          path: bids.yml
+          target: /etc/validator-node-bids.yml
+        - action: rebuild
+          path: Dockerfile
+        - action: rebuild
+          path: debian
+        - action: rebuild
+          path: configurator
+        - action: rebuild
+          path: linux/etc
+        - action: rebuild
+          path: pyproject.toml
+        - action: rebuild
+          path: poetry.lock
+
   db:
     image: postgres:latest
     deploy:
@@ -121,6 +190,11 @@ services:
         source: ./db_init.sh
         target: /docker-entrypoint-initdb.d/init-user-db.sh
         read_only: true
+    develop:
+      watch:
+        - action: rebuild
+          path: db_init.sh
+
   broker:
     image: rabbitmq:latest
     deploy:
