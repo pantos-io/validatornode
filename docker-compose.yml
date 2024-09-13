@@ -43,6 +43,7 @@ services:
       DB_URL: postgresql://pantos-validator-node:pantos@db/pantos-validator-node
       CELERY_BROKER: amqp://pantos-validator-node:pantos@broker:5672/pantos-validator-node
       CELERY_BACKEND: db+postgresql://pantos-validator-node:pantos@db/pantos-validator-node-celery
+      DEV_MODE: ${DEV_MODE}
     ports:
       - 809${INSTANCE-0}:8080
     healthcheck:
@@ -123,6 +124,7 @@ services:
       DB_URL: postgresql://pantos-validator-node:pantos@db/pantos-validator-node
       CELERY_BROKER: amqp://pantos-validator-node:pantos@broker:5672/pantos-validator-node
       CELERY_BACKEND: db+postgresql://pantos-validator-node:pantos@db/pantos-validator-node-celery
+      DEV_MODE: ${DEV_MODE}
     healthcheck:
       test: ["CMD", "/usr/bin/pantos-validator-node-celery", "--status"]
       interval: 5s

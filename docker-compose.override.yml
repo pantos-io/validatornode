@@ -11,7 +11,7 @@ services:
       pantos-validator-node:
       pantos-validator-node-primary:
       pantos-ethereum:
-    entrypoint: sh -c 'set -a; . /etc/pantos/eth-data/ETHEREUM.env && . /etc/pantos/bnb-data/BNB.env; set +a; exec /usr/bin/pantos-validator-node-server'
+    entrypoint: sh -c 'set -a; . /etc/pantos/eth-data/ETHEREUM.env && . /etc/pantos/bnb-data/BNB_CHAIN.env; set +a; exec /usr/bin/pantos-validator-node-server'
     environment:
       PANTOS_ENV_FILE: /etc/pantos/validator-node-config.env
       APP_PRIMARY_URL: http://validator-node-${STACK_IDENTIFIER}-1:8080
@@ -42,7 +42,7 @@ services:
       pantos-validator-node:
       pantos-validator-node-primary:
       pantos-ethereum:
-    entrypoint: sh -c 'set -a; . /etc/pantos/eth-data/ETHEREUM.env && . /etc/pantos/bnb-data/BNB.env; set +a; exec /usr/bin/pantos-validator-node-celery'
+    entrypoint: sh -c 'set -a; . /etc/pantos/eth-data/ETHEREUM.env && . /etc/pantos/bnb-data/BNB_CHAIN.env; set +a; exec /usr/bin/pantos-validator-node-celery'
     environment:
       PANTOS_ENV_FILE: /etc/pantos/validator-node-config.env
       APP_URL: http://validator-node-${STACK_IDENTIFIER}-${INSTANCE-1}:8080
