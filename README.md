@@ -76,23 +76,23 @@ Please note that you may need to add a load balancer or another webserver in fro
 
 If you're hosting this on a cloud provider (AWS, GCP, Azure or alike), these are normally provided. You just need to point the load balancer to the port exposed by the app, `8080`, and configure the rest accordingly.
 
-#### Multiple local deployments using docker swarm
+##### Local development with Docker
 
-We support multiple local deployments, for example for testing purposes, using docker swarm. To get started you need to enable swarm mode (if you haven't) by running:
+You can do local development with Docker by enabling dev mode (Docker watch mode). To do so, set the environment variable `DEV_MODE` to true, like this:
 
-`docker swarm init`
+`DEV_MODE=true make docker`
 
-Then you can run the stacks like this:
+#### Multiple local deployments
 
-`make docker-multiple INSTANCE_COUNT=<number of instances>`
+We support multiple local deployments, for example for testing purposes, you can run the stacks like this:
+
+`make docker INSTANCE_COUNT=<number of instances>`
 
 To remove all the stacks, run the following:
 
 `make docker-remove`
 
 Please note that this mode uses an incremental amount of resources and that Docker Desktop doesn't fully support displaying it, but it should be good enough to test multi-sig locally.
-
-**IMPORTANT** If you want to switch between this mode and docker compose you **must** remove the counterpart by using `docker compose down -v` or `make docker-remove` respectively.
 
 #### Python package
 
