@@ -75,16 +75,17 @@ def setup_logger(logger: logging.Logger, *args, **kwargs):
 
 
 # Additional Celery configuration
-celery_app.conf.update(result_expires=None,
-                       task_default_exchange='pantos.validatornode',
-                       task_default_queue='pantos.validatornode',
-                       task_default_routing_key='pantos.validatornode',
-                       task_track_started=True,
-                       worker_enable_remote_control=False,
-                       # Make sure the broker crashes if it can't connect on startup
-                       broker_connection_retry=10,
-                       broker_channel_error_retry=True,
-                       broker_connection_retry_on_startup=False)
+celery_app.conf.update(
+    result_expires=None,
+    task_default_exchange='pantos.validatornode',
+    task_default_queue='pantos.validatornode',
+    task_default_routing_key='pantos.validatornode',
+    task_track_started=True,
+    worker_enable_remote_control=False,
+    # Make sure the broker crashes if it can't connect on startup
+    broker_connection_retry=10,
+    broker_channel_error_retry=True,
+    broker_connection_retry_on_startup=False)
 
 
 # Source: https://stackoverflow.com/questions/43944787/sqlalchemy-celery-with-scoped-session-error/54751019#54751019 # noqa
