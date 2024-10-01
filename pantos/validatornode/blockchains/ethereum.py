@@ -559,6 +559,8 @@ class EthereumClient(BlockchainClient):
         min_adaptable_fee_per_gas = \
             self._get_config()['min_adaptable_fee_per_gas']
         max_total_fee_per_gas = self._get_config().get('max_total_fee_per_gas')
+        if max_total_fee_per_gas == 0:
+            max_total_fee_per_gas = None
         amount = None
         nonce = self.__get_nonce(node_connections, internal_transfer_id)
         adaptable_fee_increase_factor = \
