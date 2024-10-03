@@ -1,7 +1,6 @@
 """Module for Solana-specific clients and errors.
 
 """
-import typing
 import uuid
 
 from pantos.common.blockchains.enums import Blockchain
@@ -59,8 +58,7 @@ class SolanaClient(BlockchainClient):
 
     def read_external_token_address(
             self, token_address: BlockchainAddress,
-            external_blockchain: Blockchain) -> \
-            typing.Optional[BlockchainAddress]:
+            external_blockchain: Blockchain) -> BlockchainAddress | None:
         # Docstring inherited
         raise NotImplementedError  # pragma: no cover
 
@@ -75,7 +73,7 @@ class SolanaClient(BlockchainClient):
 
     def read_outgoing_transfers_in_transaction(
             self, transaction_id: str,
-            hub_address: BlockchainAddress) -> typing.List[CrossChainTransfer]:
+            hub_address: BlockchainAddress) -> list[CrossChainTransfer]:
         # Docstring inherited
         raise NotImplementedError  # pragma: no cover
 

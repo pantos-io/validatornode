@@ -27,8 +27,8 @@ class Blockchain(Base):
         The blockchain's name (equal to the
         pantos.common.blockchains.Blockchain enum name).
     last_block_number : sqlalchemy.Column
-        The last block monitored for new Pantos TransferFrom events on
-        the blockchain (-1 if no block has been monitored).
+        The last block monitored for new Pantos TransferFromSucceeded
+        events on the blockchain (-1 if no block has been monitored).
 
     """
     __tablename__ = 'blockchains'

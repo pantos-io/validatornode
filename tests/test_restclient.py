@@ -52,8 +52,8 @@ def test_init_correct(with_trailing_slash):
     url_with_trailing_slash = _PRIMARY_NODE_URL + '/'
     client = PrimaryNodeClient(
         url_with_trailing_slash if with_trailing_slash else _PRIMARY_NODE_URL)
-    assert (
-        client._PrimaryNodeClient__primary_node_url == url_with_trailing_slash)
+    url = client._PrimaryNodeClient__primary_node_url  # type: ignore
+    assert url == url_with_trailing_slash
 
 
 @unittest.mock.patch('pantos.validatornode.restclient.requests.get')

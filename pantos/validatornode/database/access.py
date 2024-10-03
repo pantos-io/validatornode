@@ -191,7 +191,7 @@ def create_validator_node_signature(
 
 def read_blockchain_last_block_number(blockchain: Blockchain) -> int:
     """Read the number of the last block monitored for new Pantos
-    TransferFrom events on the given blockchain.
+    TransferFromSucceeded events on the given blockchain.
 
     Parameters
     ----------
@@ -487,7 +487,7 @@ def read_validator_nonce_by_source_transaction_id(
 def update_blockchain_last_block_number(blockchain: Blockchain,
                                         last_block_number: int) -> None:
     """Update the number of the last block monitored for new Pantos
-    TransferFrom events on the given blockchain.
+    TransferFromSucceeded events on the given blockchain.
 
     Parameters
     ----------
