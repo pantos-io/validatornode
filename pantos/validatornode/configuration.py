@@ -10,6 +10,8 @@ from pantos.common.blockchains.enums import Blockchain
 from pantos.common.configuration import Config
 from pantos.common.logging import LogFormat
 
+from pantos.validatornode.protocol import get_supported_protocol_versions
+
 _DEFAULT_FILE_NAME: typing.Final[str] = 'validator-node-config.yml'
 """Default configuration file name."""
 
@@ -168,6 +170,14 @@ _VALIDATION_SCHEMA_TASK = {
 """Schema for validating a task entry in the configuration file."""
 
 _VALIDATION_SCHEMA = {
+    'protocol': {
+        'type': 'string',
+        'required': True,
+        'allowed': [
+            str(protocol_version)
+            for protocol_version in get_supported_protocol_versions()
+        ]
+    },
     'application': {
         'type': 'dict',
         'required': True,

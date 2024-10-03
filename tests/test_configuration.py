@@ -11,6 +11,11 @@ from pantos.common.configuration import ConfigError
 from pantos.validatornode.configuration import get_blockchain_config
 from pantos.validatornode.configuration import get_blockchains_rpc_nodes
 from pantos.validatornode.configuration import load_config
+from pantos.validatornode.protocol import get_latest_protocol_version
+
+_CONFIGURATION_PROTOCOL = f'''
+protocol: {str(get_latest_protocol_version())}
+'''
 
 _CONFIGURATION_LOG = '''
     log:
@@ -99,8 +104,9 @@ blockchains:
                   [blockchain.name.lower() for blockchain in Blockchain]))
 
 _CONFIGURATION_SECTIONS = [
-    _CONFIGURATION_APPLICATION, _CONFIGURATION_DATABASE, _CONFIGURATION_CELERY,
-    _CONFIGURATION_MONITOR, _CONFIGURATION_TASKS, _CONFIGURATION_BLOCKCHAINS
+    _CONFIGURATION_PROTOCOL, _CONFIGURATION_APPLICATION,
+    _CONFIGURATION_DATABASE, _CONFIGURATION_CELERY, _CONFIGURATION_MONITOR,
+    _CONFIGURATION_TASKS, _CONFIGURATION_BLOCKCHAINS
 ]
 
 _CONFIGURATION = ''.join(_CONFIGURATION_SECTIONS)

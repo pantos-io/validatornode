@@ -4,6 +4,7 @@ import tempfile
 import unittest.mock
 import uuid
 
+import eth_account.account
 import eth_account.messages
 import hexbytes
 import pytest
@@ -23,9 +24,25 @@ from pantos.validatornode.blockchains.base import BlockchainClient
 from pantos.validatornode.blockchains.base import NonMatchingForwarderError
 from pantos.validatornode.blockchains.base import \
     SourceTransferIdAlreadyUsedError
+from pantos.validatornode.blockchains.ethereum import _EIP712_DOMAIN_NAME
+from pantos.validatornode.blockchains.ethereum import _EIP712_DOMAIN_SALT
+from pantos.validatornode.blockchains.ethereum import \
+    _TRANSFER_TO_MESSAGE_TYPES
 from pantos.validatornode.blockchains.ethereum import EthereumClient
 from pantos.validatornode.blockchains.ethereum import EthereumClientError
 from pantos.validatornode.entities import CrossChainTransfer
+
+_CHAIN_ID = 1638
+
+_DESTINATION_BLOCK_NUMBER = 20842624
+
+_DESTINATION_TRANSACTION_HASH = hexbytes.HexBytes(
+    '0x5792e26d11cdf54155de59de5ddcca3f9d084ce89f4b5d4f9e50ec30c726be70')
+
+_SOURCE_BLOCK_NUMBER = 51065469
+
+_SOURCE_TRANSACTION_HASH = hexbytes.HexBytes(
+    '0x79a6ae275eae47bbb9c63dcf18e5d14a647d4d39a3463f06d25a581853d8bdc3')
 
 _INCOMING_TRANSFER = CrossChainTransfer(
     source_blockchain=Blockchain.FANTOM,
@@ -46,100 +63,6 @@ _INCOMING_TRANSFER = CrossChainTransfer(
         '0xC892F1D09a7BEF98d65e7f9bD4642d36BC506441'), amount=18372630000,
     fee=50000000, service_node_address=BlockchainAddress(
         '0x726265A9e352F2e9f15F255957840992803cED7d'))
-
-_INCOMING_TRANSFER_TRANSACTION_RECEIPT = web3.datastructures.AttributeDict({
-    'blockHash': hexbytes.HexBytes(
-        '0xabf47e52f5479e18443ebe944673d82362ed6629c89939990a89c86cdde58baa'),
-    'blockNumber': 9054223,
-    'contractAddress': None,
-    'cumulativeGasUsed': 742878,
-    'effectiveGasPrice': 16418295659,
-    'from': '0xCb25168600fEe6fAcD0BBFbDAa9EE7099E1E015b',
-    'gasUsed': 157377,
-    'logs': [
-        web3.datastructures.AttributeDict({
-            'address': '0xC892F1D09a7BEF98d65e7f9bD4642d36BC506441',
-            'topics': [
-                hexbytes.HexBytes(
-                    '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4'
-                    'df523b3ef'),
-                hexbytes.HexBytes(
-                    '0x0000000000000000000000000000000000000000000000000000000'
-                    '000000000'),
-                hexbytes.HexBytes(
-                    '0x0000000000000000000000001368229bf4d073ce3dd3c4ebdc34082'
-                    'aab82bbc3')
-            ],
-            'data': '0x0000000000000000000000000000000000000000000000000000000'
-            '4471815f0',
-            'blockNumber': 9054223,
-            'transactionHash': hexbytes.HexBytes(
-                '0xbedd8be8f9b16088fbf23ed675d596a421e973100e7c89fb3697cc512cd'
-                '29840'),
-            'transactionIndex': 7,
-            'blockHash': hexbytes.HexBytes(
-                '0xabf47e52f5479e18443ebe944673d82362ed6629c89939990a89c86cdde'
-                '58baa'),
-            'logIndex': 11,
-            'removed': False
-        }),
-        web3.datastructures.AttributeDict({
-            'address': '0xFB37499DC5401Dc39a0734df1fC7924d769721d5',
-            'topics': [
-                hexbytes.HexBytes(
-                    '0x3c5be01384657a8cc30b2bd374dca5eb5ef72676ae5ccf23c76a8f2'
-                    'b847739dc')
-            ],
-            'data': '0x0000000000000000000000000000000000000000000000000000000'
-            '000000007000000000000000000000000000000000000000000000000'
-            '000000000000615e00000000000000000000000000000000000000000'
-            '000000000000000000001200000000000000000000000000000000000'
-            '0000000000000000000000000156d7000000000000000000000000000'
-            '00000000000000000000000000000000001a000000000000000000000'
-            '00001368229bf4d073ce3dd3c4ebdc34082aab82bbc30000000000000'
-            '000000000000000000000000000000000000000000000000200000000'
-            '000000000000000000c892f1d09a7bef98d65e7f9bd4642d36bc50644'
-            '100000000000000000000000000000000000000000000000000000004'
-            '471815f00000000000000000000000000000000000000000000000000'
-            '000000000000042307837646164316230633266643739303465663932'
-            '616362366265613462313536343334646233366561363061636630616'
-            '265313937346437396566653935386136000000000000000000000000'
-            '000000000000000000000000000000000000000000000000000000000'
-            '000000000000000000000000000000000000000002a30783133363832'
-            '323962463444303733436533444433633445424443333430383241616'
-            '238326262633300000000000000000000000000000000000000000000'
-            '000000000000000000000000000000000000000000000000000000000'
-            '000002a30783535333865363030646339313966373238353864643444'
-            '344635453433323765633666326166363000000000000000000000000'
-            '000000000000000000000',
-            'blockNumber': 9054223,
-            'transactionHash': hexbytes.HexBytes(
-                '0xbedd8be8f9b16088fbf23ed675d596a421e973100e7c89fb3697cc512cd'
-                '29840'),
-            'transactionIndex': 7,
-            'blockHash': hexbytes.HexBytes(
-                '0xabf47e52f5479e18443ebe944673d82362ed6629c89939990a89c86cdde'
-                '58baa'),
-            'logIndex': 12,
-            'removed': False
-        })
-    ],
-    'logsBloom': hexbytes.HexBytes(
-        '0x0000000000000000000000000000000100000004000000000000000000000000000'
-        '000010000000000000000000000040000000000000000000000000000000000000000'
-        '000000000000000800000000008000000000000000000000000000000000000002000'
-        '000400000000000080000000000000000000000001000000000000000000000004000'
-        '000000000000000000000000000000000000000000010000000000000000000000000'
-        '000000000000000000000000000000000000000000400000200000000000000000000'
-        '000000000000000000000000000000002000000000000000000000000000000000000'
-        '0000000090000000000000100000000'),
-    'status': 1,
-    'to': '0xFB37499DC5401Dc39a0734df1fC7924d769721d5',
-    'transactionHash': hexbytes.HexBytes(
-        '0xbedd8be8f9b16088fbf23ed675d596a421e973100e7c89fb3697cc512cd29840'),
-    'transactionIndex': 7,
-    'type': '0x2'
-})
 
 _OUTGOING_TRANSFER_LOGS = [
     web3.datastructures.AttributeDict({
@@ -246,123 +169,6 @@ _OUTGOING_TRANSFER_LOGS = [
     })
 ]
 
-_OUTGOING_TRANSFER_TRANSACTION_RECEIPT = web3.datastructures.AttributeDict({
-    'blockHash': hexbytes.HexBytes(
-        '0x29b78d019efc8a3edb4043426deef8c837aac793d7cc2f10f288df57c1e6b298'),
-    'blockNumber': 9480704,
-    'contractAddress': None,
-    'cumulativeGasUsed': 7160615,
-    'effectiveGasPrice': 3000006235,
-    'from': '0xaAE34Ec313A97265635B8496468928549cdd4AB7',
-    'gasUsed': 141217,
-    'logs': [
-        web3.datastructures.AttributeDict({
-            'address': '0x7eade9AE29C756d77a370353dC2eF5482d6b5219',
-            'topics': [
-                hexbytes.HexBytes(
-                    '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4'
-                    'df523b3ef'),
-                hexbytes.HexBytes(
-                    '0x00000000000000000000000096f4b54091f223e1343352ae932ff38'
-                    '5f025e301'),
-                hexbytes.HexBytes(
-                    '0x0000000000000000000000000000000000000000000000000000000'
-                    '000000000')
-            ],
-            'data': hexbytes.HexBytes(
-                '0x00000000000000000000000000000000000000000000000000000000127'
-                'a3980'),
-            'blockNumber': 9480704,
-            'transactionHash': hexbytes.HexBytes(
-                '0xb3b517e400f3eba3804126d2072cdfc8e13eba03402efb17f5beabb8abd'
-                '8141e'),
-            'transactionIndex': 15,
-            'blockHash': hexbytes.HexBytes(
-                '0x29b78d019efc8a3edb4043426deef8c837aac793d7cc2f10f288df57c1e'
-                '6b298'),
-            'logIndex': 32,
-            'removed': False
-        }),
-        web3.datastructures.AttributeDict({
-            'address': '0x7eade9AE29C756d77a370353dC2eF5482d6b5219',
-            'topics': [
-                hexbytes.HexBytes(
-                    '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4'
-                    'df523b3ef'),
-                hexbytes.HexBytes(
-                    '0x00000000000000000000000096f4b54091f223e1343352ae932ff38'
-                    '5f025e301'),
-                hexbytes.HexBytes(
-                    '0x000000000000000000000000aae34ec313a97265635b84964689285'
-                    '49cdd4ab7')
-            ],
-            'data': hexbytes.HexBytes(
-                '0x00000000000000000000000000000000000000000000000000000001faa'
-                '3b500'),
-            'blockNumber': 9480704,
-            'transactionHash': hexbytes.HexBytes(
-                '0xb3b517e400f3eba3804126d2072cdfc8e13eba03402efb17f5beabb8abd'
-                '8141e'),
-            'transactionIndex': 15,
-            'blockHash': hexbytes.HexBytes(
-                '0x29b78d019efc8a3edb4043426deef8c837aac793d7cc2f10f288df57c1e'
-                '6b298'),
-            'logIndex': 33,
-            'removed': False
-        }),
-        web3.datastructures.AttributeDict({
-            'address': '0x0F911887da88500a364Fa925f72A8F24709EE3aC',
-            'topics': [
-                hexbytes.HexBytes(
-                    '0xe2d69d9df6c1e740c72aecc4a0cd85eca27cbc5273ec079de974008'
-                    'f492a9f8b')
-            ],
-            'data': hexbytes.HexBytes(
-                '0x00000000000000000000000000000000000000000000000000000000000'
-                '0000400000000000000000000000000000000000000000000000000000000'
-                '0000000100000000000000000000000096f4b54091f223e1343352ae932ff'
-                '385f025e30100000000000000000000000000000000000000000000000000'
-                '000000000001200000000000000000000000007eade9ae29c756d77a37035'
-                '3dc2ef5482d6b521900000000000000000000000000000000000000000000'
-                '0000000000000000018000000000000000000000000000000000000000000'
-                '000000000000000127a398000000000000000000000000000000000000000'
-                '000000000000000001faa3b500000000000000000000000000aae34ec313a'
-                '97265635b8496468928549cdd4ab700000000000000000000000000000000'
-                '0000000000000000000000000000002a30784137363934303065346535643'
-                '7453337616531424130433045664346613043464435633136356234000000'
-                '0000000000000000000000000000000000000000000000000000000000000'
-                '0000000000000000000000000000000000000002a30783863323444396245'
-                '6135623139323030394642303738363161374663323345613966453232336'
-                '56300000000000000000000000000000000000000000000'),
-            'blockNumber': 9480704,
-            'transactionHash': hexbytes.HexBytes(
-                '0xb3b517e400f3eba3804126d2072cdfc8e13eba03402efb17f5beabb8abd'
-                '8141e'),
-            'transactionIndex': 15,
-            'blockHash': hexbytes.HexBytes(
-                '0x29b78d019efc8a3edb4043426deef8c837aac793d7cc2f10f288df57c1e'
-                '6b298'),
-            'logIndex': 34,
-            'removed': False
-        })
-    ],
-    'logsBloom': hexbytes.HexBytes(
-        '0x0000000000000000000000000000000000000000000000000040000020000000000'
-        '000000000000000000000000000000000000000000000000000000000000000000000'
-        '004000000000000800000000000000002000000000100000000000000000020002000'
-        '000000000000000080000000000400000000000001000000000000000000000000000'
-        '000000000000000000000000000000000000000000008000000000000000000000000'
-        '000000000000001000000020000000000000000000000000200000000000000100000'
-        '000000000000020200000000000000002000000008000000000000000000000000000'
-        '8000000000000000000000000000000'),
-    'status': 1,
-    'to': '0x0F911887da88500a364Fa925f72A8F24709EE3aC',
-    'transactionHash': hexbytes.HexBytes(
-        '0xb3b517e400f3eba3804126d2072cdfc8e13eba03402efb17f5beabb8abd8141e'),
-    'transactionIndex': 15,
-    'type': 2
-})
-
 _OUTGOING_TRANSFERS = [
     CrossChainTransfer(
         source_blockchain=Blockchain.ETHEREUM,
@@ -370,8 +176,8 @@ _OUTGOING_TRANSFERS = [
         source_hub_address=BlockchainAddress(
             '0x0F911887da88500a364Fa925f72A8F24709EE3aC'),
         source_transfer_id=4,
-        source_transaction_id='0xb3b517e400f3eba3804126d2072cdfc8e13eba03402ef'
-        'b17f5beabb8abd8141e', source_block_number=9480704,
+        source_transaction_id=_SOURCE_TRANSACTION_HASH.to_0x_hex(),
+        source_block_number=_SOURCE_BLOCK_NUMBER,
         source_block_hash='0x29b78d019efc8a3edb4043426deef8c837aac793d7cc2f10f'
         '288df57c1e6b298', sender_address=BlockchainAddress(
             '0x96f4B54091f223e1343352AE932fF385f025E301'),
@@ -442,14 +248,13 @@ _KEYSTORE_PASSWORD = '0@/V4\\Uxz%OW'
 
 _TOKEN_ADDRESS = '0x5Acfa9f0CEADd177825c67226B4Eb4f09293b756'
 
-_TRANSACTION_ID = \
-    '0x5792e26d11cdf54155de59de5ddcca3f9d084ce89f4b5d4f9e50ec30c726be70'
-
 _VALIDATOR_NONCE = 51187229043241446622
 
 _HUB_ADDRESS = '0x7A9D071aD683B583BfB4cc91c2A21D9bB712Cd32'
 
 _FORWARDER_ADDRESS = '0x7F029687e25D506645030788a54df4B99d837545'
+
+_PAN_TOKEN_ADDRESS = '0x28C768862A63ee0501B10FEC97B2351DD6FaC8C2'
 
 _MINIMUM_VALIDATOR_NODE_SIGNATURES = 3
 
@@ -473,24 +278,118 @@ _VALIDATOR_NODE_SIGNATURES = [
 
 
 @pytest.fixture(scope='module')
-def incoming_transfer_message():
-    base_message = web3.Web3.solidity_keccak([
-        'uint256', 'uint256', 'string', 'uint256', 'string', 'address',
-        'string', 'address', 'uint256', 'uint256', 'address', 'address',
-        'address'
-    ], [
-        _INCOMING_TRANSFER.source_blockchain.value,
-        _INCOMING_TRANSFER.destination_blockchain.value,
-        _INCOMING_TRANSFER.source_transaction_id,
-        _INCOMING_TRANSFER.source_transfer_id,
-        _INCOMING_TRANSFER.sender_address,
-        _INCOMING_TRANSFER.recipient_address,
-        _INCOMING_TRANSFER.source_token_address,
-        _INCOMING_TRANSFER.destination_token_address,
-        _INCOMING_TRANSFER.amount, _VALIDATOR_NONCE, _HUB_ADDRESS,
-        _FORWARDER_ADDRESS, _INCOMING_TRANSFER.destination_token_address
-    ])
-    return eth_account.messages.encode_defunct(base_message)
+def chain_id():
+    return _CHAIN_ID
+
+
+@pytest.fixture(scope='module')
+def destination_block_number():
+    return _DESTINATION_BLOCK_NUMBER
+
+
+@pytest.fixture(scope='module')
+def destination_transaction_hash():
+    return _DESTINATION_TRANSACTION_HASH
+
+
+@pytest.fixture(scope='module')
+def destination_transaction_hash_str(destination_transaction_hash):
+    return destination_transaction_hash.to_0x_hex()
+
+
+@pytest.fixture(scope='module')
+def destination_transaction_receipt(destination_block_number,
+                                    destination_transaction_hash):
+    return {
+        'blockNumber': destination_block_number,
+        'transactionHash': destination_transaction_hash
+    }
+
+
+@pytest.fixture(scope='module')
+def source_block_number():
+    return _SOURCE_BLOCK_NUMBER
+
+
+@pytest.fixture(scope='module')
+def source_transaction_hash():
+    return _SOURCE_TRANSACTION_HASH
+
+
+@pytest.fixture(scope='module')
+def source_transaction_hash_str(source_transaction_hash):
+    return source_transaction_hash.to_0x_hex()
+
+
+@pytest.fixture(scope='module')
+def source_transaction_receipt(source_block_number, source_transaction_hash):
+    return {
+        'blockNumber': source_block_number,
+        'transactionHash': source_transaction_hash
+    }
+
+
+@pytest.fixture(scope='module')
+def source_transaction_event_logs(source_block_number,
+                                  source_transaction_hash):
+    return [{
+        'event': 'TransferFromSucceeded',
+        'args': {
+            'sourceTransferId': _OUTGOING_TRANSFERS[0].source_transfer_id,
+            'request': {
+                'destinationBlockchainId': _OUTGOING_TRANSFERS[0].
+                destination_blockchain.value,
+                'sender': _OUTGOING_TRANSFERS[0].sender_address,
+                'recipient': _OUTGOING_TRANSFERS[0].recipient_address,
+                'sourceToken': _OUTGOING_TRANSFERS[0].source_token_address,
+                'destinationToken': _OUTGOING_TRANSFERS[0].
+                destination_token_address,
+                'amount': _OUTGOING_TRANSFERS[0].amount,
+                'serviceNode': _OUTGOING_TRANSFERS[0].service_node_address,
+                'fee': _OUTGOING_TRANSFERS[0].fee,
+                'nonce': None,
+                'validUntil': None
+            },
+            'signature': None
+        },
+        'transactionHash': source_transaction_hash,
+        'blockNumber': source_block_number,
+        'blockHash': hexbytes.HexBytes(
+            _OUTGOING_TRANSFERS[0].source_block_hash)
+    }]
+
+
+@pytest.fixture(scope='module')
+def eip712_domain_data(protocol_version, chain_id):
+    return {
+        'name': _EIP712_DOMAIN_NAME,
+        'version': str(protocol_version.major),
+        'chainId': chain_id,
+        'verifyingContract': _FORWARDER_ADDRESS,
+        'salt': _EIP712_DOMAIN_SALT
+    }
+
+
+@pytest.fixture(scope='module')
+def incoming_transfer_message_data():
+    return {
+        'request': {
+            'sourceBlockchainId': _INCOMING_TRANSFER.source_blockchain.value,
+            'sourceTransferId': _INCOMING_TRANSFER.source_transfer_id,
+            'sourceTransactionId': _INCOMING_TRANSFER.source_transaction_id,
+            'sender': _INCOMING_TRANSFER.sender_address,
+            'recipient': _INCOMING_TRANSFER.recipient_address,
+            'sourceToken': _INCOMING_TRANSFER.source_token_address,
+            'destinationToken': _INCOMING_TRANSFER.destination_token_address,
+            'amount': _INCOMING_TRANSFER.amount,
+            'nonce': _VALIDATOR_NONCE
+        },
+        'destinationBlockchainId': _INCOMING_TRANSFER.destination_blockchain.
+        value,
+        'pantosHub': _HUB_ADDRESS,
+        'pantosForwarder': _FORWARDER_ADDRESS,
+        'pantosToken': _PAN_TOKEN_ADDRESS
+    }
 
 
 @pytest.fixture(scope='module')
@@ -516,24 +415,27 @@ def node_connections(w3):
 
 @pytest.fixture(scope='module')
 @unittest.mock.patch.object(EthereumClient, '_get_config')
-def ethereum_client(mock_get_config, keystore_file_path, node_connections):
+def ethereum_client(mock_get_config, config_dict, chain_id, keystore_file_path,
+                    node_connections):
     # Load keystore configuration from the keystore file
     # This is typically done by the validator
     with keystore_file_path.open() as keystore_file:
         keystore = keystore_file.read()
-    mock_config = {
+    mock_blockchain_config = {
         'providers': [''],
         'fallback_providers': [''],
         'average_block_time': 14,
         'confirmations': 12,
-        'chain_id': 1,
+        'chain_id': chain_id,
         'private_key': keystore,
         'private_key_password': _KEYSTORE_PASSWORD
     }
-    mock_get_config.return_value = mock_config
+    mock_get_config.return_value = mock_blockchain_config
     mock_create_node_connections = unittest.mock.MagicMock()
     mock_create_node_connections.return_value = node_connections
-    ethereum_client = EthereumClient()
+    with unittest.mock.patch('pantos.validatornode.blockchains.base.config',
+                             config_dict):
+        ethereum_client = EthereumClient()
     assert ethereum_client.get_utilities()._default_private_key == _PRIVATE_KEY
     ethereum_client._EthereumClient__create_node_connections = \
         mock_create_node_connections
@@ -592,7 +494,7 @@ def test_is_token_active_correct(mock_create_hub_contract, token_active,
                                  ethereum_client):
     mock_hub_contract = unittest.mock.MagicMock()
     mock_get_token_record = unittest.mock.MagicMock()
-    mock_token_record = (token_active, 0)
+    mock_token_record = (token_active, )
     mock_get_token_record.call().get.return_value = mock_token_record
     mock_hub_contract.functions.getTokenRecord.return_value = \
         mock_get_token_record
@@ -766,8 +668,8 @@ def test_read_outgoing_transfers_from_block_correct(mock_get_config,
     def mock_get_logs(filter_params):
         return [
             log for log in _OUTGOING_TRANSFER_LOGS
-            if log.blockNumber >= filter_params['fromBlock']
-            and log.blockNumber <= filter_params['toBlock']
+            if log.blockNumber >= filter_params['fromBlock']  # type: ignore
+            and log.blockNumber <= filter_params['toBlock']  # type: ignore
         ]
 
     with unittest.mock.patch.object(w3.eth, 'get_logs', mock_get_logs):
@@ -804,34 +706,41 @@ def test_read_outgoing_transfers_from_block_results_not_matching_error(
                 from_block_number)
 
 
-def test_read_outgoing_transfers_in_transaction_correct(ethereum_client, w3):
-    transaction_id = _OUTGOING_TRANSFER_TRANSACTION_RECEIPT[
-        'transactionHash'].to_0x_hex()
+@unittest.mock.patch.object(EthereumClient, '_create_hub_contract')
+def test_read_outgoing_transfers_in_transaction_correct(
+        mock_create_hub_contract, source_transaction_receipt,
+        source_transaction_event_logs, ethereum_client, w3):
+    mock_hub_contract = mock_create_hub_contract()
+    event = mock_hub_contract.events.TransferFromSucceeded()
+    event.process_receipt().get.return_value = source_transaction_event_logs
+    transaction_id = source_transaction_receipt['transactionHash'].to_0x_hex()
     hub_address = _OUTGOING_TRANSFERS[0].source_hub_address
-    with unittest.mock.patch.object(
-            w3.eth, 'get_transaction_receipt',
-            return_value=_OUTGOING_TRANSFER_TRANSACTION_RECEIPT):
+
+    with unittest.mock.patch.object(w3.eth, 'get_transaction_receipt',
+                                    return_value=source_transaction_receipt):
         assert (ethereum_client.read_outgoing_transfers_in_transaction(
             transaction_id, hub_address) == [_OUTGOING_TRANSFERS[0]])
 
 
-def test_read_outgoing_transfers_in_transaction_error(ethereum_client):
+def test_read_outgoing_transfers_in_transaction_error(
+        ethereum_client, source_transaction_hash_str):
     hub_address = _OUTGOING_TRANSFERS[0].source_hub_address
     with pytest.raises(EthereumClientError) as exception_info:
         ethereum_client.read_outgoing_transfers_in_transaction(
-            _TRANSACTION_ID, hub_address)
-    assert exception_info.value.details['transaction_id'] == _TRANSACTION_ID
+            source_transaction_hash_str, hub_address)
+    assert (exception_info.value.details['transaction_id'] ==
+            source_transaction_hash_str)
     assert exception_info.value.details['hub_address'] == hub_address
 
 
 def test_read_outgoing_transfers_in_transaction_results_not_matching_error(
-        ethereum_client, w3):
+        source_transaction_hash_str, ethereum_client, w3):
     with unittest.mock.patch.object(w3.eth, 'get_transaction_receipt',
                                     side_effect=ResultsNotMatchingError):
         hub_address = _OUTGOING_TRANSFERS[0].source_hub_address
         with pytest.raises(ResultsNotMatchingError):
             ethereum_client.read_outgoing_transfers_in_transaction(
-                _TRANSACTION_ID, hub_address)
+                source_transaction_hash_str, hub_address)
 
 
 @pytest.mark.parametrize('token_decimals', [8, 18])
@@ -865,13 +774,12 @@ def test_read_token_decimals_results_not_matching_error(
 @unittest.mock.patch.object(EthereumClient, '_create_hub_contract')
 def test_read_transfer_to_transaction_data_correct(
         mock_create_hub_contract, read_destination_transfer_id,
-        ethereum_client, w3):
-    transaction_id = _INCOMING_TRANSFER_TRANSACTION_RECEIPT[
-        'transactionHash'].to_0x_hex()
+        destination_block_number, destination_transaction_hash_str,
+        destination_transaction_receipt, ethereum_client, w3):
     destination_transfer_id = 5363
     mock_hub_contract = mock_create_hub_contract()
-    mock_hub_contract.events.TransferTo().process_receipt().__getitem__(
-    ).get.return_value = {
+    event = mock_hub_contract.events.TransferToSucceeded()
+    event.process_receipt().__getitem__().get.return_value = {
         'args': {
             'destinationTransferId': destination_transfer_id
         }
@@ -879,12 +787,11 @@ def test_read_transfer_to_transaction_data_correct(
 
     with unittest.mock.patch.object(
             w3.eth, 'get_transaction_receipt',
-            return_value=_INCOMING_TRANSFER_TRANSACTION_RECEIPT):
+            return_value=destination_transaction_receipt):
         data_response = ethereum_client._read_transfer_to_transaction_data(
-            transaction_id, read_destination_transfer_id)
+            destination_transaction_hash_str, read_destination_transfer_id)
 
-    assert (data_response.block_number ==
-            _INCOMING_TRANSFER_TRANSACTION_RECEIPT['blockNumber'])
+    assert data_response.block_number == destination_block_number
     if read_destination_transfer_id:
         assert (
             data_response.destination_transfer_id == destination_transfer_id)
@@ -893,15 +800,13 @@ def test_read_transfer_to_transaction_data_correct(
 @pytest.mark.parametrize('errors',
                          [(ResultsNotMatchingError, ResultsNotMatchingError),
                           (Exception, EthereumClientError)])
-def test_read_transfer_to_transaction_data_error(errors, ethereum_client, w3):
-    transaction_id = _INCOMING_TRANSFER_TRANSACTION_RECEIPT[
-        'transactionHash'].to_0x_hex()
-
+def test_read_transfer_to_transaction_data_error(
+        errors, destination_transaction_hash_str, ethereum_client, w3):
     with unittest.mock.patch.object(w3.eth, 'get_transaction_receipt',
                                     side_effect=errors[0]):
         with pytest.raises(errors[1]):
             ethereum_client._read_transfer_to_transaction_data(
-                transaction_id, True)
+                destination_transaction_hash_str, True)
 
 
 @unittest.mock.patch.object(EthereumClient, '_create_forwarder_contract')
@@ -932,17 +837,19 @@ def test_read_validator_node_addresses_other_error(mock_get_config,
 
 
 @unittest.mock.patch.object(EthereumClient, '_get_config')
-def test_recover_transfer_to_signer_address_correct(mock_get_config,
-                                                    incoming_transfer_message,
-                                                    ethereum_client):
+def test_recover_transfer_to_signer_address_correct(
+        mock_get_config, chain_id, eip712_domain_data,
+        incoming_transfer_message_data, ethereum_client):
     mock_config = {
+        'chain_id': chain_id,
         'hub': _HUB_ADDRESS,
         'forwarder': _FORWARDER_ADDRESS,
-        'pan_token': _INCOMING_TRANSFER.destination_token_address
+        'pan_token': _PAN_TOKEN_ADDRESS
     }
     mock_get_config.return_value = mock_config
-    signed_message = web3.Account.sign_message(incoming_transfer_message,
-                                               private_key=_PRIVATE_KEY)
+    signed_message = web3.Account.sign_typed_data(
+        _PRIVATE_KEY, eip712_domain_data, _TRANSFER_TO_MESSAGE_TYPES,
+        incoming_transfer_message_data)
     request = BlockchainClient.TransferToSignerAddressRecoveryRequest(
         source_blockchain=_INCOMING_TRANSFER.source_blockchain,
         source_transaction_id=_INCOMING_TRANSFER.source_transaction_id,
@@ -952,7 +859,7 @@ def test_recover_transfer_to_signer_address_correct(mock_get_config,
         source_token_address=_INCOMING_TRANSFER.source_token_address,
         destination_token_address=_INCOMING_TRANSFER.destination_token_address,
         amount=_INCOMING_TRANSFER.amount, validator_nonce=_VALIDATOR_NONCE,
-        signature=signed_message.signature)
+        signature=signed_message.signature.to_0x_hex())
 
     recovered_signer_address = \
         ethereum_client.recover_transfer_to_signer_address(request)
@@ -962,12 +869,13 @@ def test_recover_transfer_to_signer_address_correct(mock_get_config,
 
 
 @unittest.mock.patch.object(EthereumClient, '_get_config')
-def test_recover_transfer_to_signer_address_error(mock_get_config,
+def test_recover_transfer_to_signer_address_error(mock_get_config, chain_id,
                                                   ethereum_client):
     mock_config = {
+        'chain_id': chain_id,
         'hub': _HUB_ADDRESS,
         'forwarder': _FORWARDER_ADDRESS,
-        'pan_token': _INCOMING_TRANSFER.destination_token_address
+        'pan_token': _PAN_TOKEN_ADDRESS
     }
     mock_get_config.return_value = mock_config
     request = BlockchainClient.TransferToSignerAddressRecoveryRequest(
@@ -987,12 +895,13 @@ def test_recover_transfer_to_signer_address_error(mock_get_config,
 
 @unittest.mock.patch.object(
     EthereumClient, '_get_config', return_value={
+        'chain_id': _CHAIN_ID,
         'hub': _HUB_ADDRESS,
         'forwarder': _FORWARDER_ADDRESS,
-        'pan_token': _INCOMING_TRANSFER.destination_token_address
+        'pan_token': _PAN_TOKEN_ADDRESS
     })
-def test_sign_transfer_to_message_correct(mock_get_config,
-                                          incoming_transfer_message,
+def test_sign_transfer_to_message_correct(mock_get_config, eip712_domain_data,
+                                          incoming_transfer_message_data,
                                           ethereum_client):
     request = BlockchainClient.TransferToMessageSignRequest(
         incoming_transfer=_INCOMING_TRANSFER, validator_nonce=_VALIDATOR_NONCE,
@@ -1000,8 +909,11 @@ def test_sign_transfer_to_message_correct(mock_get_config,
         destination_forwarder_address=_FORWARDER_ADDRESS)
     signature = ethereum_client.sign_transfer_to_message(request)
 
-    signer_address = web3.Account.recover_message(incoming_transfer_message,
-                                                  signature=signature)
+    signable_message = eth_account.messages.encode_typed_data(
+        eip712_domain_data, _TRANSFER_TO_MESSAGE_TYPES,
+        incoming_transfer_message_data)
+    signer_address = eth_account.account.Account.recover_message(
+        signable_message, signature=signature)
     assert signer_address == web3.Account.from_key(_PRIVATE_KEY).address
 
 
@@ -1020,9 +932,10 @@ def test_sign_transfer_to_message_destination_blockchain_error(
     assert exception_info.value.details['request'] == request
 
 
-@unittest.mock.patch('web3.Account.sign_message', side_effect=Exception)
+@unittest.mock.patch('web3.Account.sign_typed_data', side_effect=Exception)
 @unittest.mock.patch.object(
     EthereumClient, '_get_config', return_value={
+        'chain_id': _CHAIN_ID,
         'hub': _HUB_ADDRESS,
         'forwarder': _FORWARDER_ADDRESS,
         'pan_token': _INCOMING_TRANSFER.destination_token_address

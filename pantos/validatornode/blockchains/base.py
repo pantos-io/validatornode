@@ -20,18 +20,13 @@ from pantos.common.entities import TransactionStatus
 from pantos.common.exceptions import ErrorCreator
 from pantos.common.types import BlockchainAddress
 
+from pantos.validatornode.configuration import config
 from pantos.validatornode.configuration import get_blockchain_config
 from pantos.validatornode.entities import CrossChainTransfer
 from pantos.validatornode.exceptions import ValidatorNodeError
+from pantos.validatornode.protocol import is_supported_protocol_version
 
 _logger = logging.getLogger(__name__)
-
-_CONTRACTS_VERSION = semantic_version.Version('1.0.0')
-
-VERSIONED_CONTRACTS_ABI = {
-    abi_contract: VersionedContractAbi(abi_contract, _CONTRACTS_VERSION)
-    for abi_contract in ContractAbi
-}
 
 
 class BlockchainClientError(ValidatorNodeError):
@@ -76,6 +71,12 @@ class UnresolvableTransferToSubmissionError(BlockchainClientError):
 class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
     """Base class for all blockchain clients.
 
+    Attributes
+    ----------
+    protocol_version : semantic_version.Version
+        The version of the Pantos protocol that the blockchain client
+        instance is compliant with.
+
     """
     def __init__(self):
         """Construct a blockchain client instance.
@@ -87,6 +88,10 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
             initialized.
 
         """
+        self.protocol_version: typing.Final[
+            semantic_version.Version] = semantic_version.Version(
+                config['protocol'])
+        assert is_supported_protocol_version(self.protocol_version)
         blockchain_nodes_urls = self._get_config()['providers']
         fallback_blockchain_nodes_urls = self._get_config().get(
             'fallback_providers', [])
@@ -236,8 +241,7 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
     @abc.abstractmethod
     def read_external_token_address(
             self, token_address: BlockchainAddress,
-            external_blockchain: Blockchain) -> \
-            typing.Optional[BlockchainAddress]:
+            external_blockchain: Blockchain) -> BlockchainAddress | None:
         """Read the external blockchain address of a token that is
         registered at the Pantos Hub.
 
@@ -250,7 +254,7 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
 
         Returns
         -------
-        BlockchainAddress, optional
+        BlockchainAddress or None
             The external blockchain address of the token, or None if
             none is registered.
 
@@ -300,7 +304,7 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
             The number of the last block that has been considered.
 
         """
-        outgoing_transfers: typing.List[CrossChainTransfer]
+        outgoing_transfers: list[CrossChainTransfer]
         to_block_number: int
 
     @abc.abstractmethod
@@ -330,7 +334,7 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
     @abc.abstractmethod
     def read_outgoing_transfers_in_transaction(
             self, transaction_id: str,
-            hub_address: BlockchainAddress) -> typing.List[CrossChainTransfer]:
+            hub_address: BlockchainAddress) -> list[CrossChainTransfer]:
         """Read the outgoing Pantos transfers included in a specified
         transaction.
 
@@ -603,10 +607,10 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
 
         """
         transaction_submission_completed: bool
-        transaction_status: typing.Optional[TransactionStatus] = None
-        transaction_id: typing.Optional[str] = None
-        block_number: typing.Optional[int] = None
-        destination_transfer_id: typing.Optional[int] = None
+        transaction_status: TransactionStatus | None = None
+        transaction_id: str | None = None
+        block_number: int | None = None
+        destination_transfer_id: int | None = None
 
     def get_transfer_to_submission_status(
             self, internal_transaction_id: uuid.UUID) \
@@ -676,7 +680,7 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
 
         """
         block_number: int
-        destination_transfer_id: typing.Optional[int] = None
+        destination_transfer_id: int | None = None
 
     @abc.abstractmethod
     def _read_transfer_to_transaction_data(
@@ -705,7 +709,7 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
         """
         pass  # pragma: no cover
 
-    def _get_config(self) -> typing.Dict[str, typing.Any]:
+    def _get_config(self) -> dict[str, typing.Any]:
         return get_blockchain_config(self.get_blockchain())
 
     def _create_non_matching_forwarder_error(
@@ -723,3 +727,18 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
         return self._create_error(
             specialized_error_class=UnresolvableTransferToSubmissionError,
             **kwargs)
+
+    @property
+    def _versioned_pantos_forwarder_abi(self) -> VersionedContractAbi:
+        return VersionedContractAbi(ContractAbi.PANTOS_FORWARDER,
+                                    self.protocol_version)
+
+    @property
+    def _versioned_pantos_hub_abi(self) -> VersionedContractAbi:
+        return VersionedContractAbi(ContractAbi.PANTOS_HUB,
+                                    self.protocol_version)
+
+    @property
+    def _versioned_pantos_token_abi(self) -> VersionedContractAbi:
+        return VersionedContractAbi(ContractAbi.PANTOS_TOKEN,
+                                    self.protocol_version)
