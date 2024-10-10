@@ -40,7 +40,6 @@ _SOURCE_TRANSFER_ID_ALREADY_USED_ERROR = \
 _TRANSACTION_ID_PATTERN = re.compile(r'^0x[a-fA-F0-9]{64}')
 
 _EIP712_DOMAIN_NAME = 'Pantos'
-_EIP712_DOMAIN_SALT = b''
 
 _TRANSFER_TO_MESSAGE_TYPES = {
     'TransferToRequest': [{
@@ -551,8 +550,7 @@ class EthereumClient(BlockchainClient):
             'name': _EIP712_DOMAIN_NAME,
             'version': str(self.protocol_version.major),
             'chainId': self._get_config()['chain_id'],
-            'verifyingContract': self._get_config()['forwarder'],
-            'salt': _EIP712_DOMAIN_SALT
+            'verifyingContract': self._get_config()['forwarder']
         }
 
     def __get_nonce(self, node_connections: NodeConnections,

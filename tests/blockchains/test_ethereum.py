@@ -25,7 +25,6 @@ from pantos.validatornode.blockchains.base import NonMatchingForwarderError
 from pantos.validatornode.blockchains.base import \
     SourceTransferIdAlreadyUsedError
 from pantos.validatornode.blockchains.ethereum import _EIP712_DOMAIN_NAME
-from pantos.validatornode.blockchains.ethereum import _EIP712_DOMAIN_SALT
 from pantos.validatornode.blockchains.ethereum import \
     _TRANSFER_TO_MESSAGE_TYPES
 from pantos.validatornode.blockchains.ethereum import EthereumClient
@@ -365,8 +364,7 @@ def eip712_domain_data(protocol_version, chain_id):
         'name': _EIP712_DOMAIN_NAME,
         'version': str(protocol_version.major),
         'chainId': chain_id,
-        'verifyingContract': _FORWARDER_ADDRESS,
-        'salt': _EIP712_DOMAIN_SALT
+        'verifyingContract': _FORWARDER_ADDRESS
     }
 
 
