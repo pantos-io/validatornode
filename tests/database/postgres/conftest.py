@@ -8,7 +8,7 @@ from pantos.validatornode.database.models import Base
 @pytest.fixture(scope='session')
 def database_engine():
     database_engine = sqlalchemy.create_engine(
-        'postgresql://pantos-validator-node:7FVg7AE3@localhost/'
+        'postgresql+psycopg://pantos-validator-node:7FVg7AE3@localhost/'
         'pantos-validator-node-test')
     return database_engine
 
