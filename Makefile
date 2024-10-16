@@ -5,6 +5,7 @@ PYTHON_FILES := $(PYTHON_FILES_WITHOUT_TESTS) tests
 STACK_BASE_NAME=stack-validator-node
 INSTANCE_COUNT ?= 1
 DEV_MODE ?= false
+SHELL := $(shell which bash)
 
 .PHONY: check-version
 check-version:
@@ -231,19 +232,19 @@ docker: check-swarm-init docker-build
             export ARGS="$(ARGS) --watch"; \
             docker compose -f docker-compose.yml -f docker-compose.override.yml -p $$STACK_NAME $$EXTRA_COMPOSE up $$ARGS & \
             COMPOSE_PID=$$!; \
-            trap 'echo "Caught SIGINT, killing background processes..."; kill $$COMPOSE_PID; exit 1' SIGINT; \
+            trap 'echo "Caught INT, killing background processes..."; kill $$COMPOSE_PID; exit 1' INT; \
         else \
             export ARGS="--detach --wait $(ARGS)"; \
             docker compose -f docker-compose.yml -f docker-compose.override.yml -p $$STACK_NAME $$EXTRA_COMPOSE up $$ARGS; \
         fi; \
-        trap 'exit 1' SIGINT; \
+        trap 'exit 1' INT; \
         echo "Stack $$STACK_NAME deployed"; \
         if [ "$(DEV_MODE)" = "true" ]; then \
             wait $$COMPOSE_PID; \
         fi; \
         ) & \
     done; \
-    trap 'echo "Caught SIGINT, killing all background processes..."; kill 0; exit 1' SIGINT; \
+    trap 'echo "Caught INT, killing all background processes..."; kill 0; exit 1' INT; \
     wait
     #docker stack deploy -c docker-compose.yml -c docker-compose.override.yml $$STACK_NAME --with-registry-auth --detach=false $(ARGS) & \
 
