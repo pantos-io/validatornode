@@ -103,20 +103,22 @@ def initialize_package(is_flask_app: bool = False) -> None:
     global _session_maker
     _session_maker = sqlalchemy.orm.sessionmaker(bind=_sql_engine)
     # Initialize the tables
-    with _session_maker.begin() as session:
-        # Blockchain table
-        blockchain_ids = session.execute(sqlalchemy.select(
-            Blockchain_.id)).scalars().all()
-        for blockchain in sorted(Blockchain):
-            if blockchain.value not in blockchain_ids:
-                session.execute(
-                    sqlalchemy.insert(Blockchain_).values(
-                        id=blockchain.value, name=blockchain.name))
-        # Transfer status table
-        transfer_status_ids = session.execute(
-            sqlalchemy.select(TransferStatus_.id)).scalars().all()
-        for transfer_status in sorted(TransferStatus):
-            if transfer_status.value not in transfer_status_ids:
-                session.execute(
-                    sqlalchemy.insert(TransferStatus_).values(
-                        id=transfer_status.value, name=transfer_status.name))
+    if is_flask_app:
+        with _session_maker.begin() as session:
+            # Blockchain table
+            blockchain_ids = session.execute(sqlalchemy.select(
+                Blockchain_.id)).scalars().all()
+            for blockchain in sorted(Blockchain):
+                if blockchain.value not in blockchain_ids:
+                    session.execute(
+                        sqlalchemy.insert(Blockchain_).values(
+                            id=blockchain.value, name=blockchain.name))
+            # Transfer status table
+            transfer_status_ids = session.execute(
+                sqlalchemy.select(TransferStatus_.id)).scalars().all()
+            for transfer_status in sorted(TransferStatus):
+                if transfer_status.value not in transfer_status_ids:
+                    session.execute(
+                        sqlalchemy.insert(TransferStatus_).values(
+                            id=transfer_status.value,
+                            name=transfer_status.name))
