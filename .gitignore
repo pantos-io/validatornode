@@ -9,8 +9,7 @@
 .vscode/
 build/
 dist/
-find.sh
-local/
+/local/
 debian/.debhelper
 debian/pantos-validator-node
 debian/tmp
