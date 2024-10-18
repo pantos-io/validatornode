@@ -34,9 +34,26 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: step-security/harden-runner@17d0e2bd7d51742c71671bd19fa12bdc9d40a3d6 # v2.8.1
+      - name: Harden Runner
+        uses: step-security/harden-runner@446798f8213ac2e75931c1b0769676d927801858 # v2.10.0
         with:
-          egress-policy: audit
+          disable-sudo: false
+          egress-policy: block
+          allowed-endpoints: >
+            auth.docker.io:443
+            deb.debian.org:80
+            files.pythonhosted.org:443
+            fulcio.sigstore.dev:443
+            github.com:443
+            index.docker.io:443
+            objects.githubusercontent.com:443
+            production.cloudflare.docker.com:443
+            pypi.org:443
+            *.docker.io:443
+            rekor.sigstore.dev:443
+            repo.anaconda.com:443
+            tuf-repo-cdn.sigstore.dev:443
+        
       - uses: actions/checkout@v4
 
       - name: Set up QEMU
@@ -68,7 +85,7 @@ jobs:
           done
 
       - name: Login to Docker Hub
-        uses: docker/login-action@0d4c9c5ea7693da7b068278f7b52bda2a190a446 # v3.2.0
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
