@@ -24,7 +24,9 @@ jobs:
       - uses: step-security/harden-runner@v2
         with:
           disable-sudo: true
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            raw.githubusercontent.com:443
       - name: Configure Environment
         id: get-environment
         run: |
@@ -78,10 +80,20 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - uses: step-security/harden-runner@v2
+      - name: Harden Runner
+        uses: step-security/harden-runner@446798f8213ac2e75931c1b0769676d927801858 # v2.10.0
         with:
-          disable-sudo: true
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            azure.archive.ubuntu.com:80
+            esm.ubuntu.com:443
+            files.pythonhosted.org:443
+            github.com:443
+            motd.ubuntu.com:443
+            packages.microsoft.com:443
+            pypi.org:443
+            repo.anaconda.com:443
+        
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
@@ -115,7 +127,7 @@ jobs:
           # Do not sign deb artifacts
           rm release/*.deb
 
-      - uses: sigstore/gh-action-sigstore-python@v2.1.1
+      - uses: sigstore/gh-action-sigstore-python@v3.0.0
         with:
           inputs: release/*
 
@@ -148,10 +160,15 @@ jobs:
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
-      - uses: step-security/harden-runner@v2
+      - name: Harden Runner
+        uses: step-security/harden-runner@446798f8213ac2e75931c1b0769676d927801858 # v2.10.0
         with:
           disable-sudo: true
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            github.com:443
+            upload.pypi.org:443
+        
       - uses: actions/checkout@v4
   
       - uses: actions/download-artifact@v4
@@ -181,10 +198,15 @@ jobs:
     # Disable the job for the moment being
     runs-on: ubuntu-latest
     steps:
-      - uses: step-security/harden-runner@v2
+      - name: Harden Runner
+        uses: step-security/harden-runner@446798f8213ac2e75931c1b0769676d927801858 # v2.10.0
         with:
           disable-sudo: true
-          egress-policy: audit
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+        
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
