@@ -387,6 +387,7 @@ def _test_constraint(database_session, model_instances, *message_parts):
         database_session.add(model_instance)
     with pytest.raises(sqlalchemy.exc.IntegrityError) as exception_info:
         database_session.commit()
+    assert exception_info.value.orig is not None
     sqlite_message = exception_info.value.orig.args[0]
     for message_part in message_parts:
         assert message_part in sqlite_message
