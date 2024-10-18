@@ -44,7 +44,7 @@ _SOURCE_TRANSACTION_HASH = hexbytes.HexBytes(
     '0x79a6ae275eae47bbb9c63dcf18e5d14a647d4d39a3463f06d25a581853d8bdc3')
 
 _INCOMING_TRANSFER = CrossChainTransfer(
-    source_blockchain=Blockchain.FANTOM,
+    source_blockchain=Blockchain.SONIC,
     destination_blockchain=Blockchain.ETHEREUM,
     source_hub_address=BlockchainAddress(
         '0xC892F1D09a7BEF98d65e7f9bD4642d36BC506441'),
