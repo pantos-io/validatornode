@@ -7,7 +7,7 @@ from pantos.common.blockchains.enums import Blockchain
 from pantos.validatornode.business.transfers import TransferInteractor
 from pantos.validatornode.monitor import run_monitor
 
-_INACTIVE_BLOCKCHAINS = [Blockchain.FANTOM, Blockchain.SOLANA]
+_INACTIVE_BLOCKCHAINS = [Blockchain.SONIC, Blockchain.SOLANA]
 
 _INTERVAL = 10
 
