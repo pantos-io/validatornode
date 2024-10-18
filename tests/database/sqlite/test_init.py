@@ -49,6 +49,7 @@ def test_get_session_database_error():
         get_session()
 
 
+@pytest.mark.parametrize('is_flask_app', [True, False])
 @pytest.mark.parametrize(
     'existing_transfer_statuses',
     itertools.chain.from_iterable(
@@ -63,7 +64,7 @@ def test_get_session_database_error():
 @unittest.mock.patch('alembic.config.Config')
 def test_initialize_package_correct(mock_config, mock_upgrade,
                                     mock_create_engine, existing_blockchains,
-                                    existing_transfer_statuses,
+                                    existing_transfer_statuses, is_flask_app,
                                     database_engine, database_session):
     for blockchain in existing_blockchains:
         database_session.execute(
@@ -76,18 +77,21 @@ def test_initialize_package_correct(mock_config, mock_upgrade,
     database_session.commit()
     mock_create_engine.return_value = database_engine
 
-    initialize_package(True)
+    initialize_package(is_flask_app)
 
     blockchain_records = database_session.execute(
         sqlalchemy.select(Blockchain_)).fetchall()
-    assert len(blockchain_records) == len(Blockchain)
+    assert len(blockchain_records) == (len(Blockchain) if is_flask_app else
+                                       len(existing_blockchains))
     blockchains = {blockchain.value: blockchain for blockchain in Blockchain}
     for blockchain_record in blockchain_records:
         blockchain = blockchains.pop(blockchain_record[0].id)
         assert blockchain_record[0].name == blockchain.name
     transfer_status_records = database_session.execute(
         sqlalchemy.select(TransferStatus_)).fetchall()
-    assert len(transfer_status_records) == len(TransferStatus)
+    assert len(transfer_status_records) == (len(TransferStatus)
+                                            if is_flask_app else
+                                            len(existing_transfer_statuses))
     transfer_statuses = {
         transfer_status.value: transfer_status
         for transfer_status in TransferStatus
