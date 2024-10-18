@@ -271,7 +271,7 @@ jobs:
           retries=0
           set +e
           while [ $retries -lt $max_retries ]; do
-            response=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' 'http://localhost:8081/bids?source_blockchain=0&destination_blockchain=1')
+            response=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' 'http://localhost:8080/health/nodes')
             exit_code=$?
             if [ "$response" -eq 200 ]; then
               echo "Received 200 response, exiting."
