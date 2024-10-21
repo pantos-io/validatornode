@@ -29,7 +29,7 @@ COPY . /app
 
 RUN make debian-build-deps
 
-RUN make debian debian-full
+RUN make debian debian-full wheel
 
 FROM bitnami/minideb:bookworm AS prod
 
