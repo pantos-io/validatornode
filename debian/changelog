@@ -1,3 +1,9 @@
+pantos-validator-node (2.0.0) UNRELEASED; urgency=medium
+
+  * Support for Sonic and Polygon 2.0
+
+-- Pantos GmbH <contact@pantos.io>
+
 pantos-validator-node (1.8.3) UNRELEASED; urgency=medium
 
   * TBD
