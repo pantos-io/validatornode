@@ -1,10 +1,11 @@
-pantos-validator-node (2.0.0) UNRELEASED; urgency=medium
+pantos-validator-node (2.0.0) RELEASED; urgency=medium
 
   * Support for Sonic and Polygon 2.0
 
--- Pantos GmbH <contact@pantos.io>
+-- Pantos GmbH <contact@pantos.io> Mon, 24 Oct 2024
 
-pantos-validator-node (1.8.3) UNRELEASED; urgency=medium
+
+pantos-validator-node (1.8.3) RELEASED; urgency=medium
 
   * TBD
 
