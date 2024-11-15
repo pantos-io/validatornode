@@ -156,11 +156,7 @@ jobs:
         uses: step-security/harden-runner@446798f8213ac2e75931c1b0769676d927801858 # v2.10.0
         with:
           disable-sudo: true
-          egress-policy: block
-          allowed-endpoints: >
-            ghcr.io:443
-            github.com:443
-            upload.pypi.org:443
+          egress-policy: audit
         
       - uses: actions/checkout@v4
   
@@ -195,10 +191,7 @@ jobs:
         uses: step-security/harden-runner@446798f8213ac2e75931c1b0769676d927801858 # v2.10.0
         with:
           disable-sudo: true
-          egress-policy: block
-          allowed-endpoints: >
-            api.github.com:443
-            github.com:443
+          egress-policy: audit
         
       - uses: actions/download-artifact@v4
         with:
