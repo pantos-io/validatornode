@@ -158,6 +158,7 @@ jobs:
           disable-sudo: true
           egress-policy: block
           allowed-endpoints: >
+            ghcr.io:443
             github.com:443
             upload.pypi.org:443
         
