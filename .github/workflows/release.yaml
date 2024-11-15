@@ -83,16 +83,8 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@446798f8213ac2e75931c1b0769676d927801858 # v2.10.0
         with:
-          egress-policy: block
-          allowed-endpoints: >
-            azure.archive.ubuntu.com:80
-            *.github.com:443
-            esm.ubuntu.com:443
-            files.pythonhosted.org:443
-            motd.ubuntu.com:443
-            packages.microsoft.com:443
-            pypi.org:443
-            repo.anaconda.com:443
+          disable-sudo: true
+          egress-policy: audit
         
       - uses: actions/download-artifact@v4
         with:
