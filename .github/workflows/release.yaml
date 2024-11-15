@@ -86,10 +86,9 @@ jobs:
           egress-policy: block
           allowed-endpoints: >
             azure.archive.ubuntu.com:80
-            api.github.com:443
+            *.github.com:443
             esm.ubuntu.com:443
             files.pythonhosted.org:443
-            github.com:443
             motd.ubuntu.com:443
             packages.microsoft.com:443
             pypi.org:443
