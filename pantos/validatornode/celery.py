@@ -6,6 +6,7 @@ import pathlib
 import sys
 
 import celery  # type: ignore
+import certifi  # type: ignore
 from pantos.common.logging import LogFile
 from pantos.common.logging import LogFormat
 from pantos.common.logging import initialize_logger
@@ -41,7 +42,7 @@ celery_app = celery.Celery(
     backend=config['celery']['backend'], include=[
         'pantos.common.blockchains.tasks',
         'pantos.validatornode.business.transfers'
-    ])
+    ], broker_use_ssl={'ca_certs': certifi.where()})
 """Celery application instance."""
 
 
