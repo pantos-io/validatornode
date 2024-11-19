@@ -1,5 +1,5 @@
 Package: pantos-validator-node
-Version: 2.1.1
+Version: 2.1.2
 Architecture: all
 Maintainer: Pantos GmbH <contact@pantos.io>
 Installed-Size: 409341
@@ -7,10 +7,10 @@ Pre-Depends: dpkg (>= 1.16.1), python3, python3-venv
 Depends: debconf (>= 0.5) | debconf-2.0, sysuser-helper (>= 1.3.3), libpq-dev, debconf
 Recommends: iptables
 Filename: ./pantos-validator-node__amd64.deb
-Size: 96121660
-MD5sum: 5cf0071a1a6354442519fe26bae80730
-SHA1: 93d3802638c2ef1ad633e7df2576f5a6422ac69f
-SHA256: a212c7664e38aa504e8eecade3f3f3af7efe5566714db3aba2ae54862cec7037
+Size: 96112360
+MD5sum: 78f2d49e2c8b592c31530b24039e98bc
+SHA1: edb0cbe8a664ac011c7d6b3e9686c4d5981df410
+SHA256: 897bfc45b15080d888b742b33dfc65f8ad0b54bf58b4bf9b4be5096d18ddb88d
 Section: contrib/python
 Priority: extra
 Homepage: https://github.com/pantos-io/validatornode
@@ -18,16 +18,16 @@ Description: Service Node reference implementation for the Pantos multi-blockcha
 
 Package: pantos-validator-node-full
 Source: pantos-validator-node-full
-Version: 2.1.1
+Version: 2.1.2
 Architecture: all
 Maintainer: Pantos GmbH <contact@pantos.io>
 Pre-Depends: debhelper (>=10), dpkg (>= 1.16.1)
 Depends: pantos-validator-node, postgresql, rabbitmq-server
-Filename: ./pantos-validator-node-full_2.1.1_all.deb
+Filename: ./pantos-validator-node-full_2.1.2_all.deb
 Size: 5214
-MD5sum: 02d24a88c71468808b467409cbc20b85
-SHA1: 8feea0b49068696ae2af772c66bab1121d2d84f3
-SHA256: 25892ee8a72f68cc3804434468ddfe4b20f6675ba7d46dc7633fd8f67adb936e
+MD5sum: 210b4cf49f0a406e65df26c142b32629
+SHA1: 5378db0f5f354302336f6c0c0db8642f4b67c97b
+SHA256: 3deb7d4d49740a2d747667246af858dc2e3f9b6da9f0937067a4be84c281829d
 Section: contrib/python
 Priority: extra
 Homepage: https://github.com/pantos-io/validatornode
