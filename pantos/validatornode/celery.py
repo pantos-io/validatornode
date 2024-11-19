@@ -2,6 +2,7 @@
 
 """
 import logging
+import os
 import pathlib
 import sys
 
@@ -33,13 +34,27 @@ def is_main_module() -> bool:
             or any(marker in sys.argv for marker in potential_celery_markers))
 
 
+def verify_celery_url_has_ssl() -> bool:
+    """Determine if the Celery broker URL has SSL enabled.
+
+    Returns
+    -------
+    bool
+        True if the Celery broker URL has SSL enabled.
+    """
+    if "CELERY_BROKER" in os.environ:
+        url_to_check = os.environ["CELERY_BROKER"]
+    else:
+        url_to_check = config['celery']['broker']
+    return url_to_check.startswith('amqps')
+
+
 if is_main_module():
     _logger.info('Initializing the Celery application...')
     initialize_application()  # pragma: no cover
 
-ca_certs = {} if config['celery']['broker'].startswith('amqp') else {
-    'ca_certs': certifi.where()
-}
+ca_certs = {'ca_certs': certifi.where()} if verify_celery_url_has_ssl() else {}
+
 celery_app = celery.Celery(
     'pantos.validatornode', broker=config['celery']['broker'],
     backend=config['celery']['backend'], include=[
