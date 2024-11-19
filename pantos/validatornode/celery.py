@@ -6,6 +6,7 @@ import pathlib
 import sys
 
 import celery  # type: ignore
+import certifi  # type: ignore
 from pantos.common.logging import LogFile
 from pantos.common.logging import LogFormat
 from pantos.common.logging import initialize_logger
@@ -36,12 +37,15 @@ if is_main_module():
     _logger.info('Initializing the Celery application...')
     initialize_application()  # pragma: no cover
 
+ca_certs = {} if config['celery']['broker'].startswith('amqp') else {
+    'ca_certs': certifi.where()
+}
 celery_app = celery.Celery(
     'pantos.validatornode', broker=config['celery']['broker'],
     backend=config['celery']['backend'], include=[
         'pantos.common.blockchains.tasks',
         'pantos.validatornode.business.transfers'
-    ])
+    ], broker_use_ssl=ca_certs)
 """Celery application instance."""
 
 

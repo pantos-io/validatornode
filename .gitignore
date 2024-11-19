@@ -3,6 +3,7 @@
 *.key*
 *.keystore*
 *.swp
+*.mypy_cache
 .coverage
 .DS_store
 .venv/
