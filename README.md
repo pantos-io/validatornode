@@ -43,7 +43,17 @@ While using the `.env` file you need to be aware that any fields containing cert
 
 The application will complain on startup should the configuration be incorrect.
 
-### 2.1 Pre-built packages
+### 2.1 System requirements
+
+The exact system requirements depend on the operating system, other software installed, and the expected load of the Pantos Validator Node (which determines the concurrency and number of Celery workers). Here we assume a virtual machine (VM) with a minimal Debian or Ubuntu installation. The Pantos Validator Node's web server and Celery workers, as well as PostgreSQL and RabbitMQ are assumed to run on the same VM.
+
+The minimum system requirements then are
+- 2 vCPUs,
+- 2 GiB memory (including one Celery worker),
+- 0.25 GiB memory per additional Celery worker (for scaling), and
+- 16 GiB storage.
+
+### 2.2 Pre-built packages
 
 There are two ways to install the apps using pre-built packages:
 
@@ -98,7 +108,7 @@ Please note that this mode uses an incremental amount of resources and that Dock
 
 We distribute the package in test-pypi and pypi under the following projects: https://test.pypi.org/project/pantos-validator-node/ and https://pypi.org/project/pantos-validator-node/. You can install it to your project by using `pip install pantos-validator-node`.
 
-### 2.2  Prerequisites
+### 2.3  Prerequisites
 
 Please make sure that your environment meets the following requirements:
 
@@ -124,7 +134,7 @@ By default poetry creates the venv directory under under ```{cache-dir}/virtuale
 poetry config virtualenvs.in-project true
 ```
 
-### 2.2  Installation Steps
+### 2.4  Installation steps
 
 #### Libraries
 
