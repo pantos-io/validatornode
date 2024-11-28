@@ -33,6 +33,7 @@ from pantos.validatornode.entities import CrossChainTransfer
 from pantos.validatornode.entities import CrossChainTransferDict
 from pantos.validatornode.restclient import PrimaryNodeClient
 from pantos.validatornode.restclient import PrimaryNodeDuplicateSignatureError
+from pantos.validatornode.restclient import PrimaryNodeInvalidSignerError
 
 _logger = logging.getLogger(__name__)
 
@@ -343,6 +344,11 @@ class TransferInteractor(Interactor):
                 _logger.warning(
                     'token transfer signature already submitted to the '
                     'primary node', extra=extra_info)
+            except PrimaryNodeInvalidSignerError:  # pragma: no cover
+                _logger.critical(
+                    'secondary node likely not properly registered as '
+                    'validator node at Pantos Forwarder', extra=extra_info)
+                raise
 
             own_address = destination_blockchain_client.get_own_address()
             self.__store_validator_node_signature(

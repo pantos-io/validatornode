@@ -172,5 +172,6 @@ class SignatureInteractor(Interactor):
         validator_node_addresses = \
             destination_blockchain_client.read_validator_node_addresses()
         if signer_address not in validator_node_addresses:
-            _logger.warning('signer is not a validator node', extra=extra_info)
+            _logger.critical('signer is not a validator node',
+                             extra=extra_info)
             raise self._create_invalid_signer_error(request=request)
