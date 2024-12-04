@@ -15,7 +15,7 @@ include = ["pantos"]
 namespaces = true
 
 [tool.poetry.group.test.dependencies]
-pytest = "8.3.3"
+pytest = "8.3.4"
 pytest-cov = "6.0.0"
 web3 = {extras = ["tester"], version = "^6.5.0"}
 
