@@ -7,10 +7,10 @@ Pre-Depends: dpkg (>= 1.16.1), python3, python3-venv
 Depends: debconf (>= 0.5) | debconf-2.0, sysuser-helper (>= 1.3.3), libpq-dev, debconf
 Recommends: iptables
 Filename: ./pantos-validator-node__amd64.deb
-Size: 96629772
-MD5sum: bde7ac50b61aaf79086fc95ae0baa6d6
-SHA1: 7110780f7e07bfa27884b2ab0d0955270574ec24
-SHA256: aba0ce9460517c5e73617aba6b47bb3369cf54970f8d4e324464ba1ba832d1d0
+Size: 96633684
+MD5sum: c58c5d64674ebb5a8cd6135ef88f842a
+SHA1: a9da693c2c97af2b8a18df614456ecd2dfbbc9e4
+SHA256: 6b44c195400240d56ec442007bba0f27e478bd1a2f76a7a4a520304873aaefd3
 Section: contrib/python
 Priority: extra
 Homepage: https://github.com/pantos-io/validatornode
@@ -24,10 +24,10 @@ Maintainer: Pantos GmbH <contact@pantos.io>
 Pre-Depends: debhelper (>=10), dpkg (>= 1.16.1)
 Depends: pantos-validator-node, postgresql, rabbitmq-server
 Filename: ./pantos-validator-node-full_2.1.4_all.deb
-Size: 5214
-MD5sum: 48c6bfd0dc858743c9c7b3f5b59e9525
-SHA1: 6b6bf4d140555011048730908a72dc8f9deaf35f
-SHA256: 86c51aeb705ad6214be84ba15272f11499b51273b357b1b6343be2a1b269fa12
+Size: 5210
+MD5sum: a8d2b99e6a7f9bb6604f741fcaa43b7c
+SHA1: 211629e5e74fdd404cf25be4a878c71858bfd7e7
+SHA256: 351848f0a01c28ece0ef5ac497389176d2cc08ca2f0fb5b963be9e8d044526e5
 Section: contrib/python
 Priority: extra
 Homepage: https://github.com/pantos-io/validatornode
