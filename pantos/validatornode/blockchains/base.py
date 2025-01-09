@@ -136,6 +136,35 @@ class BlockchainClient(BlockchainHandler, ErrorCreator[BlockchainClientError]):
         """
         return get_blockchain_utilities(self.get_blockchain())
 
+    def is_protocol_version_supported_by_forwarder_contract(self) -> bool:
+        """Determine if the configured protocol version is supported by
+        the configured Forwarder contract.
+
+        Returns
+        -------
+        bool
+            True if the Forwarder contract supports the protocol
+            version.
+
+        """
+        return self.get_utilities().is_protocol_version_supported_by_contract(
+            self._get_config()['forwarder'],
+            self._versioned_pantos_forwarder_abi)  # pragma: no cover
+
+    def is_protocol_version_supported_by_hub_contract(self) -> bool:
+        """Determine if the configured protocol version is supported by
+        the configured Hub contract.
+
+        Returns
+        -------
+        bool
+            True if the Hub contract supports the protocol version.
+
+        """
+        return self.get_utilities().is_protocol_version_supported_by_contract(
+            self._get_config()['hub'],
+            self._versioned_pantos_hub_abi)  # pragma: no cover
+
     @abc.abstractmethod
     def is_token_active(self, token_address: BlockchainAddress) -> bool:
         """Determine if a token is active.

@@ -12,6 +12,8 @@ from pantos.validatornode.application import initialize_application
 @pytest.mark.parametrize('log_format',
                          [log_format for log_format in LogFormat])
 @unittest.mock.patch(
+    'pantos.validatornode.application.check_protocol_version_compatibility')
+@unittest.mock.patch(
     'pantos.validatornode.application.initialize_blockchain_clients')
 @unittest.mock.patch(
     'pantos.validatornode.application.initialize_database_package')
@@ -26,7 +28,8 @@ def test_initialize_application_correct(
         mock_config, mock_load_config, mock_initialize_logger,
         mock_initialize_nodes, mock_get_blockchains_rpc_nodes,
         mock_initialize_database, mock_initialize_blockchain_clients,
-        log_format, console_enabled, file_enabled):
+        mock_check_protocol_version_compatibility, log_format, console_enabled,
+        file_enabled):
     mock_config_dict = {
         'application': {
             'debug': True,
@@ -52,6 +55,7 @@ def test_initialize_application_correct(
     assert mock_initialize_logger.call_count == 1
     assert mock_initialize_database.call_count == 1
     assert mock_initialize_blockchain_clients.call_count == 1
+    mock_check_protocol_version_compatibility.assert_called_once()
     assert mock_initialize_nodes.call_count == 1
     assert mock_get_blockchains_rpc_nodes.call_count == 1
     mock_load_config.assert_called_with(reload=False)
