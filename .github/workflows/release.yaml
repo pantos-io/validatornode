@@ -122,25 +122,7 @@ jobs:
       - uses: sigstore/gh-action-sigstore-python@v3.0.0
         with:
           inputs: release/*
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: signed-build
-          path: release/*.whl
-
-      - name: Merge with previous files
-        run: |
-          cp dist/*.deb release/
-          ls -lha release
-
-      - name: Upload release assets
-        uses: svenstaro/upload-release-action@v2
-        with:
-          file: "./release/*"
-          file_glob: true
-          overwrite: true
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ github.event.release.tag_name }}
+          release-signing-artifacts: true
 
   publish-pypi:
     name: Publish to ${{ needs.define-environment.outputs.deployment_pypi_environment }}
@@ -169,6 +151,10 @@ jobs:
         run: |
           ls -lha .
           ls -lha dist
+
+      - name: Remove all non wheel files
+        run: |
+          find dist -type f -not -name "*.whl" -delete
 
       - name: Publish package distributions to ${{ needs.define-environment.outputs.deployment_pypi_environment }}
         uses: pypa/gh-action-pypi-publish@release/v1
