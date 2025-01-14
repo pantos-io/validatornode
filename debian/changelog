@@ -1,3 +1,15 @@
+pantos-validator-node (2.2.0) RELEASED; urgency=low
+
+  * Update ABI
+
+-- Pantos GmbH <contact@pantos.io> Jan, 13 Dec 2025 16:00:00 +0000  
+
+pantos-validator-node (2.1.5) UNRELEASED; urgency=low
+
+  * TBD
+
+-- Pantos GmbH <contact@pantos.io> Jan, 8 Dec 2025 12:00:00 +0000  
+
 pantos-validator-node (2.1.4) RELEASED; urgency=low
 
   * Update SONIC RPC
