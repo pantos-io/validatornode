@@ -53,6 +53,9 @@ def verify_celery_url_has_ssl() -> bool:
 if is_main_module():
     _logger.info('Initializing the Celery application...')
     initialize_application()  # pragma: no cover
+else:
+    _logger.info('Celery application initialization skipped...')
+    load_config(reload=False)
 
 ca_certs = {'ca_certs': certifi.where()} if verify_celery_url_has_ssl() else {}
 
