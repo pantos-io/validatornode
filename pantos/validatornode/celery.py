@@ -57,7 +57,6 @@ else:
     _logger.info('Celery - not main module...')
     load_config(reload=False)
 
-
 ca_certs = {'ca_certs': certifi.where()} if verify_celery_url_has_ssl() else {}
 
 celery_app = celery.Celery(
