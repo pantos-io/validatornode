@@ -14,6 +14,7 @@ from pantos.common.logging import initialize_logger
 
 from pantos.validatornode.application import initialize_application
 from pantos.validatornode.configuration import config
+from pantos.validatornode.configuration import load_config
 from pantos.validatornode.database import get_engine
 
 _logger = logging.getLogger(__name__)
@@ -52,6 +53,10 @@ def verify_celery_url_has_ssl() -> bool:
 if is_main_module():
     _logger.info('Initializing the Celery application...')
     initialize_application()  # pragma: no cover
+else:
+    _logger.info('Celery - not main module...')
+    load_config(reload=False)
+
 
 ca_certs = {'ca_certs': certifi.where()} if verify_celery_url_has_ssl() else {}
 
