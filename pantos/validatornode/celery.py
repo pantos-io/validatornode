@@ -14,6 +14,7 @@ from pantos.common.logging import initialize_logger
 
 from pantos.validatornode.application import initialize_application
 from pantos.validatornode.configuration import config
+from pantos.validatornode.configuration import load_config
 from pantos.validatornode.database import get_engine
 
 _logger = logging.getLogger(__name__)

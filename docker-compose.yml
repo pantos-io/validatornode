@@ -61,7 +61,7 @@ services:
       watch:
         - action: sync
           path: ./pantos
-          target: /opt/pantos/pantos-service-node/lib/python3.12/site-packages/pantos
+          target: /opt/pantos/pantos-service-node/lib/python3.13/site-packages/pantos
         - action: sync+restart
           path: ./linux/scripts/start-web.py
           target: /opt/pantos/pantos-validator-node/bin/start-web.py
@@ -138,7 +138,7 @@ services:
       watch:
         - action: sync
           path: ./pantos
-          target: /opt/pantos/pantos-validator-node/lib/python3.12/site-packages/pantos
+          target: /opt/pantos/pantos-validator-node/lib/python3.13/site-packages/pantos
         - action: sync+restart
           path: ./linux/scripts/pantos-validator-node-celery
           target: /opt/pantos/pantos-validator-node/bin/pantos-validator-node-celery

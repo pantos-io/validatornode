@@ -66,8 +66,8 @@ jobs:
 
       - name: Check docker config and disable live reload
         run: |
-          cat /etc/docker/daemon.json
           echo '{ "live-restore": false }' | sudo tee /etc/docker/daemon.json
+          cat /etc/docker/daemon.json
           sudo systemctl reload docker
           make check-swarm-init
 
@@ -139,10 +139,8 @@ jobs:
     strategy:
       matrix:
         os:
-          - ubuntu-20.04
           - ubuntu-22.04
-          # TODO: Fix the installation on ubuntu-24.04
-          # - ubuntu-24.04
+          - ubuntu-latest
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
@@ -166,8 +164,8 @@ jobs:
 
       - name: Check docker config and disable live reload
         run: |
-          cat /etc/docker/daemon.json
           echo '{ "live-restore": false }' | sudo tee /etc/docker/daemon.json
+          cat /etc/docker/daemon.json
           sudo systemctl reload docker
           make check-swarm-init
 

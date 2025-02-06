@@ -32,7 +32,7 @@ yapf = "0.43.0"
 pre-commit = "4.1.0"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.13"
 pantos-common = "5.1.0"
 alembic = "1.14.1"
 celery = "5.3.1"
