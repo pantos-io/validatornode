@@ -17,16 +17,11 @@ from pantos.validatornode.application import initialize_application
     'pantos.validatornode.application.initialize_blockchain_clients')
 @unittest.mock.patch(
     'pantos.validatornode.application.initialize_database_package')
-@unittest.mock.patch(
-    'pantos.validatornode.application.get_blockchains_rpc_nodes')
-@unittest.mock.patch(
-    'pantos.validatornode.application.initialize_blockchain_nodes')
 @unittest.mock.patch('pantos.validatornode.application.initialize_logger')
 @unittest.mock.patch('pantos.validatornode.application.load_config')
 @unittest.mock.patch('pantos.validatornode.application.config')
 def test_initialize_application_correct(
         mock_config, mock_load_config, mock_initialize_logger,
-        mock_initialize_nodes, mock_get_blockchains_rpc_nodes,
         mock_initialize_database, mock_initialize_blockchain_clients,
         mock_check_protocol_version_compatibility, log_format, console_enabled,
         file_enabled):
@@ -56,8 +51,6 @@ def test_initialize_application_correct(
     assert mock_initialize_database.call_count == 1
     assert mock_initialize_blockchain_clients.call_count == 1
     mock_check_protocol_version_compatibility.assert_called_once()
-    assert mock_initialize_nodes.call_count == 1
-    assert mock_get_blockchains_rpc_nodes.call_count == 1
     mock_load_config.assert_called_with(reload=False)
 
 
