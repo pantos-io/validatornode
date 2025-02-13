@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pantos-validator-node"
-version = "3.0.0"
+version = "3.1.0"
 description = "Pantos Validator Node (reference implementation)"
 authors = ["Pantos GmbH <contact@pantos.io>"]
 license = "GPL-3.0-only"
